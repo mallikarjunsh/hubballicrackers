@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "download:product-images": "node scripts/downloadProductImages.js",
     "preview": "vite preview"
   },
   "private": "true",

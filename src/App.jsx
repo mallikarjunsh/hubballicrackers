@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { loadRates } from "./firebase";
+import PRODUCT_IMAGE_MANIFEST from "./productImages.json";
 let DISC = 0.2; // 20% off the listed price
 const SHOP = "Hubballi Crackers";
 const SHOP_EMAIL = "mallikarjun.hubballi1@gmail.com";
@@ -11,6 +12,32 @@ const CAROUSEL = [
   { title: "Sparklers & Lights", subtitle: "South Indian festive glow for family gatherings and celebrations", image: `${ASSET_BASE}deepavali-sparklers.png` },
   { title: "Diwali Delight", subtitle: "Family moments, bright lights, and crackers to light up the night", image: `${ASSET_BASE}deepavali-family.png` }
 ];
+const PRODUCT_IMAGES = Object.fromEntries(Object.entries(PRODUCT_IMAGE_MANIFEST).map(([name, image]) => [
+  name,
+  new URL(`${ASSET_BASE}product-images/${image.file}`, window.location.href).href
+]));
+const PRODUCT_IMAGE_CACHE = "hubballi-crackers-product-images-v1";
+const pendingProductImages = new Map();
+const getCachedProductImage = source => {
+  let pending = pendingProductImages.get(source);
+  if (!pending) {
+    pending = (async () => {
+      const cache = "caches" in window ? await caches.open(PRODUCT_IMAGE_CACHE) : null;
+      let response = cache ? await cache.match(source) : null;
+      const fromCache = !!response;
+      if (!response) {
+        response = await fetch(source, { mode: "cors" });
+        if (!response.ok) throw new Error("Image request failed");
+        if (cache) {
+          try { await cache.put(source, response.clone()); } catch (e) {}
+        }
+      }
+      return { blob: await response.blob(), fromCache };
+    })().finally(() => pendingProductImages.delete(source));
+    pendingProductImages.set(source, pending);
+  }
+  return pending.then(({ blob, fromCache }) => ({ src: URL.createObjectURL(blob), fromCache }));
+};
 let MIN = { "Karnataka": 1000, "Maharashtra": 3000, "Goa": 3000 };
 // [name, unit, printed price]
 const FALLBACK_DATA = [
@@ -88,7 +115,32 @@ export default function App() {
   const [step, setStep] = useState("list");
   const [f, setF] = useState({ state: "", city: "", name: "", mobile: "", email: "", address: "" });
   const [touched, setTouched] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productImage, setProductImage] = useState(null);
   useEffect(() => { try { localStorage.setItem("spp-cart", JSON.stringify(cart)); } catch (e) {} }, [cart]);
+  useEffect(() => {
+    if (!selectedProduct) { setProductImage(null); return; }
+    let active = true, objectUrl;
+    if (!selectedProduct.image) { setProductImage({ status: "missing" }); return; }
+    setProductImage({ status: "loading" });
+    getCachedProductImage(selectedProduct.image).then(({ src, fromCache }) => {
+      objectUrl = src;
+      if (active) setProductImage({ status: "loaded", src, fromCache });
+      else URL.revokeObjectURL(src);
+    }).catch(() => { if (active) setProductImage({ status: "error" }); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [selectedProduct]);
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = e => { if (e.key === "Escape") setSelectedProduct(null); };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [selectedProduct]);
   const setQty = (k, n) => setCart(c => { const x = { ...c }; if (n) x[k] = n; else delete x[k]; return x; });
 
   const lines = useMemo(() => DATA.flatMap(c => c.items.map(([n, u, p]) => {
@@ -117,6 +169,7 @@ export default function App() {
   const msg = () => "Enquiry for " + SHOP + "\n\nName: " + f.name + "\nMobile: " + f.mobile + (f.email ? "\nEmail: " + f.email : "") + "\nCity: " + f.city + ", " + f.state + "\nAddress: " + f.address + "\n\nItems:\n" + lines.map(l => "- " + l.n + " x " + l.qn + " = " + inr(l.o * l.qn)).join("\n") + "\n\nNet Total: " + inr(net) + "\nPacking (3%): " + inr(pack) + "\nYou Save: " + inr(save) + "\nOverall: " + inr(total);
   const [sent, setSent] = useState("");
   const submit = () => { setTouched(true); if (!bad) { setSent(msg()); setStep("done"); setCart({}); } };
+  const showProductImage = (name, unit, price, emoji) => setSelectedProduct({ name, unit, price, emoji, image: PRODUCT_IMAGES[name] });
   const Err = ({ k }) => touched && errs[k] ? <div className="err">{errs[k]}</div> : null;
 
   return (
@@ -151,7 +204,7 @@ export default function App() {
                 <tbody>{c.items.map(([n, u, p]) => {
                   const k = c.id + "|" + n, v = cart[k] || 0, o = offer(c, p);
                   return <tr key={k}>
-                    <td className="em">{c.emoji}</td><td><b>{n}</b></td><td>{u}</td>
+                    <td className="em">{c.emoji}</td><td><button className="product-image-trigger" type="button" onClick={() => showProductImage(n, u, o, c.emoji)} title={`View ${n} image`}>{n}</button></td><td>{u}</td>
                     <td className={c.net ? "" : "old"}>{c.net ? "—" : inr(p)}</td><td className="price">{inr(o)}</td>
                     <td><Qty v={v} set={n2 => setQty(k, n2)} /></td><td><b>{v ? inr(v * o) : ""}</b></td>
                   </tr>;
@@ -214,6 +267,27 @@ export default function App() {
         <div><h4>Contact</h4>📍 Tadas Cross, Near Gayatri Matt, Shiggaon 581116<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
         <div><h4>Notice</h4>Online sale of firecrackers is not permitted (Supreme Court, 2018). Add products to the cart and submit an enquiry; we confirm the order offline.</div>
       </div></footer>
+
+      {selectedProduct && <div className="product-image-backdrop" onClick={() => setSelectedProduct(null)}>
+        <section className="product-image-dialog" role="dialog" aria-modal="true" aria-labelledby="product-image-title" onClick={e => e.stopPropagation()}>
+          <button className="product-image-close" type="button" aria-label="Close product image" onClick={() => setSelectedProduct(null)}>×</button>
+          <div className="product-image-heading">
+            <span>{selectedProduct.emoji} Product photo</span>
+            <h2 id="product-image-title">{selectedProduct.name}</h2>
+            <p>{selectedProduct.unit} · {inr(selectedProduct.price)}</p>
+          </div>
+          <div className="product-image-frame">
+            {productImage?.status === "loading" && <p>Loading photo and saving it to this browser…</p>}
+            {productImage?.status === "loaded" && <img src={productImage.src} alt={selectedProduct.name} />}
+            {productImage?.status === "missing" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>This product has no photo in the supplied catalog.</p></div>}
+            {productImage?.status === "error" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>The photo could not be loaded. Please try again while online.</p></div>}
+          </div>
+          <div className="product-image-footer">
+            <span>{productImage?.status === "loaded" ? (productImage.fromCache ? "Loaded from this browser’s saved image cache." : "Saved in this browser for next time.") : "Images are cached in this browser after their first successful load."}</span>
+            <a href="https://mtpcrackers.in/products.php?device=desktop" target="_blank" rel="noopener noreferrer">Photo source: MTP Crackers</a>
+          </div>
+        </section>
+      </div>}
     </>
   );
 }
