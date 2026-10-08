@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read: if true;     // customers can read rates
+      allow write: if false;   // edit only from Firebase console / admin SDK
+    }
+  }
+}

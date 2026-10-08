@@ -1,0 +1,382 @@
+[
+  {
+    "name": "Combo Pack - Starter",
+    "unit": "1 Box",
+    "price": 3000,
+    "category": "Premium Combo Packs",
+    "emoji": "🎁",
+    "net": true,
+    "active": true,
+    "order": 0
+  },
+  {
+    "name": "Combo Pack - Hero",
+    "unit": "1 Box",
+    "price": 5000,
+    "category": "Premium Combo Packs",
+    "emoji": "🎁",
+    "net": true,
+    "active": true,
+    "order": 1
+  },
+  {
+    "name": "Combo Pack - Legend",
+    "unit": "4 Box",
+    "price": 10000,
+    "category": "Premium Combo Packs",
+    "emoji": "🎁",
+    "net": true,
+    "active": true,
+    "order": 2
+  },
+  {
+    "name": "2⅞' Kuruvi",
+    "unit": "1 Pkt",
+    "price": 35,
+    "category": "One Sound Crackers",
+    "emoji": "💥",
+    "net": false,
+    "active": true,
+    "order": 3
+  },
+  {
+    "name": "3½' Lakshmi",
+    "unit": "1 Pkt",
+    "price": 70,
+    "category": "One Sound Crackers",
+    "emoji": "💥",
+    "net": false,
+    "active": true,
+    "order": 4
+  },
+  {
+    "name": "4' Deluxe Lakshmi",
+    "unit": "1 Pkt",
+    "price": 175,
+    "category": "One Sound Crackers",
+    "emoji": "💥",
+    "net": false,
+    "active": true,
+    "order": 5
+  },
+  {
+    "name": "Red Bijili (100 Pcs)",
+    "unit": "1 Pkt",
+    "price": 185,
+    "category": "One Sound Crackers",
+    "emoji": "💥",
+    "net": false,
+    "active": true,
+    "order": 6
+  },
+  {
+    "name": "12 Cm Electric Sparklers",
+    "unit": "1 Box",
+    "price": 210,
+    "category": "Sparklers",
+    "emoji": "✨",
+    "net": false,
+    "active": true,
+    "order": 7
+  },
+  {
+    "name": "12 Cm Colour Sparklers",
+    "unit": "1 Box",
+    "price": 220,
+    "category": "Sparklers",
+    "emoji": "✨",
+    "net": false,
+    "active": true,
+    "order": 8
+  },
+  {
+    "name": "15 Cm Green Sparklers",
+    "unit": "2 Box",
+    "price": 720,
+    "category": "Sparklers",
+    "emoji": "✨",
+    "net": false,
+    "active": true,
+    "order": 9
+  },
+  {
+    "name": "30 Cm Red Sparklers",
+    "unit": "2 Box",
+    "price": 740,
+    "category": "Sparklers",
+    "emoji": "✨",
+    "net": false,
+    "active": true,
+    "order": 10
+  },
+  {
+    "name": "Ground Chakkar Big (25 Pcs)",
+    "unit": "1 Box",
+    "price": 400,
+    "category": "Ground Chakkar & Flower Pots",
+    "emoji": "🌀",
+    "net": false,
+    "active": true,
+    "order": 11
+  },
+  {
+    "name": "Ground Chakkar Deluxe (10 Pcs)",
+    "unit": "1 Box",
+    "price": 700,
+    "category": "Ground Chakkar & Flower Pots",
+    "emoji": "🌀",
+    "net": false,
+    "active": true,
+    "order": 12
+  },
+  {
+    "name": "Flower Pots Special (10 Pcs)",
+    "unit": "1 Box",
+    "price": 500,
+    "category": "Ground Chakkar & Flower Pots",
+    "emoji": "🌀",
+    "net": false,
+    "active": true,
+    "order": 13
+  },
+  {
+    "name": "Flower Pots Deluxe (5 Pcs)",
+    "unit": "1 Box",
+    "price": 1250,
+    "category": "Ground Chakkar & Flower Pots",
+    "emoji": "🌀",
+    "net": false,
+    "active": true,
+    "order": 14
+  },
+  {
+    "name": "Butterfly (18 Pcs)",
+    "unit": "1 Box",
+    "price": 500,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 15
+  },
+  {
+    "name": "Helicopter (5 Pcs)",
+    "unit": "1 Box",
+    "price": 650,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 16
+  },
+  {
+    "name": "Photo Flash Sticks (5 Pcs)",
+    "unit": "1 Box",
+    "price": 800,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 17
+  },
+  {
+    "name": "Mega Siren",
+    "unit": "1 Box",
+    "price": 1000,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 18
+  },
+  {
+    "name": "Golden Elephant",
+    "unit": "1 Pce",
+    "price": 1500,
+    "category": "Fancy Fountains",
+    "emoji": "⛲",
+    "net": false,
+    "active": true,
+    "order": 19
+  },
+  {
+    "name": "Lucky Lion",
+    "unit": "1 Pce",
+    "price": 2000,
+    "category": "Fancy Fountains",
+    "emoji": "⛲",
+    "net": false,
+    "active": true,
+    "order": 20
+  },
+  {
+    "name": "Strawberry Cone Fountain",
+    "unit": "1 Pce",
+    "price": 1200,
+    "category": "Fancy Fountains",
+    "emoji": "⛲",
+    "net": false,
+    "active": true,
+    "order": 21
+  },
+  {
+    "name": "Tricolour Fountains (5 Pcs)",
+    "unit": "1 Box",
+    "price": 1500,
+    "category": "Fancy Fountains",
+    "emoji": "⛲",
+    "net": false,
+    "active": true,
+    "order": 22
+  },
+  {
+    "name": "Musical Rocket",
+    "unit": "1 Box",
+    "price": 1000,
+    "category": "Rockets & Bombs",
+    "emoji": "🚀",
+    "net": false,
+    "active": true,
+    "order": 23
+  },
+  {
+    "name": "Two Sound Rocket",
+    "unit": "1 Box",
+    "price": 1000,
+    "category": "Rockets & Bombs",
+    "emoji": "🚀",
+    "net": false,
+    "active": true,
+    "order": 24
+  },
+  {
+    "name": "Hydro Bomb (10 Pcs)",
+    "unit": "1 Box",
+    "price": 450,
+    "category": "Rockets & Bombs",
+    "emoji": "🚀",
+    "net": false,
+    "active": true,
+    "order": 25
+  },
+  {
+    "name": "1/2 kg Paper Bomb",
+    "unit": "1 Pce",
+    "price": 500,
+    "category": "Rockets & Bombs",
+    "emoji": "🚀",
+    "net": false,
+    "active": true,
+    "order": 26
+  },
+  {
+    "name": "7 Shots Multicolour",
+    "unit": "1 Box",
+    "price": 600,
+    "category": "Multicolour Night Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 27
+  },
+  {
+    "name": "12 Shots Crackling",
+    "unit": "1 Box",
+    "price": 650,
+    "category": "Multicolour Night Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 28
+  },
+  {
+    "name": "30 Shots Multicolour",
+    "unit": "1 Box",
+    "price": 900,
+    "category": "Multicolour Night Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 29
+  },
+  {
+    "name": "120 Shots Multicolour",
+    "unit": "1 Box",
+    "price": 9600,
+    "category": "Multicolour Night Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 30
+  },
+  {
+    "name": "100 Wala",
+    "unit": "1 Box",
+    "price": 180,
+    "category": "Festival Garlands",
+    "emoji": "🎊",
+    "net": false,
+    "active": true,
+    "order": 31
+  },
+  {
+    "name": "1000 Wala (Short)",
+    "unit": "1 Box",
+    "price": 850,
+    "category": "Festival Garlands",
+    "emoji": "🎊",
+    "net": false,
+    "active": true,
+    "order": 32
+  },
+  {
+    "name": "2000 Wala (Premium)",
+    "unit": "1 Box",
+    "price": 3500,
+    "category": "Festival Garlands",
+    "emoji": "🎊",
+    "net": false,
+    "active": true,
+    "order": 33
+  },
+  {
+    "name": "5000 Wala (Premium)",
+    "unit": "1 Box",
+    "price": 8750,
+    "category": "Festival Garlands",
+    "emoji": "🎊",
+    "net": false,
+    "active": true,
+    "order": 34
+  },
+  {
+    "name": "20 Item Gift Box",
+    "unit": "1 Box",
+    "price": 1750,
+    "category": "Gift Boxes",
+    "emoji": "🧧",
+    "net": false,
+    "active": true,
+    "order": 35
+  },
+  {
+    "name": "30 Item Gift Box",
+    "unit": "1 Box",
+    "price": 3000,
+    "category": "Gift Boxes",
+    "emoji": "🧧",
+    "net": false,
+    "active": true,
+    "order": 36
+  },
+  {
+    "name": "50 Item Gift Box",
+    "unit": "1 Box",
+    "price": 5500,
+    "category": "Gift Boxes",
+    "emoji": "🧧",
+    "net": false,
+    "active": true,
+    "order": 37
+  }
+]

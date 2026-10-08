@@ -1,0 +1,7 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    { "name": "Run in Edge", "type": "msedge", "request": "launch", "url": "http://localhost:5173", "webRoot": "${workspaceFolder}", "preLaunchTask": "dev" },
+    { "name": "Run in Chrome", "type": "chrome", "request": "launch", "url": "http://localhost:5173", "webRoot": "${workspaceFolder}", "preLaunchTask": "dev" }
+  ]
+}
