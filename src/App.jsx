@@ -4,11 +4,12 @@ let DISC = 0.2; // 20% off the listed price
 const SHOP = "Hubballi Crackers";
 const SHOP_EMAIL = "mallikarjun.hubballi1@gmail.com";
 const PHONES = ["7845601428", "7676504117", "8660786076", "7676052027"];
-const LOGO = "/logo.webp";
+const ASSET_BASE = import.meta.env.BASE_URL;
+const LOGO = `${ASSET_BASE}logo.webp`;
 const CAROUSEL = [
-  { title: "Festival Fireworks", subtitle: "Premium Deepavali crackers for a bright and joyful celebration", image: "/deepavali-fireworks.png" },
-  { title: "Sparklers & Lights", subtitle: "South Indian festive glow for family gatherings and celebrations", image: "/deepavali-sparklers.png" },
-  { title: "Diwali Delight", subtitle: "Family moments, bright lights, and crackers to light up the night", image: "/deepavali-family.png" }
+  { title: "Festival Fireworks", subtitle: "Premium Deepavali crackers for a bright and joyful celebration", image: `${ASSET_BASE}deepavali-fireworks.png` },
+  { title: "Sparklers & Lights", subtitle: "South Indian festive glow for family gatherings and celebrations", image: `${ASSET_BASE}deepavali-sparklers.png` },
+  { title: "Diwali Delight", subtitle: "Family moments, bright lights, and crackers to light up the night", image: `${ASSET_BASE}deepavali-family.png` }
 ];
 let MIN = { "Karnataka": 1000, "Maharashtra": 3000, "Goa": 3000 };
 // [name, unit, printed price]
