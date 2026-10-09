@@ -5,12 +5,14 @@
     "dev": "vite",
     "build": "vite build",
     "download:product-images": "node scripts/downloadProductImages.js",
+    "sync:60-shot": "node scripts/sync60ShotProduct.js",
     "preview": "vite preview"
   },
   "private": "true",
   "type": "module",
   "dependencies": {
     "firebase": "^13.0.0",
+    "firebase-admin": "^14.5.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

@@ -34,6 +34,11 @@ td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:middle}
 .em{font-size:26px;width:46px}.old{text-decoration:line-through;color:var(--mute)}.price{font-weight:800;color:var(--brand)}
 .qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
 .qty button{border:0;background:linear-gradient(180deg,#fff6e0,#f5e7bf);color:var(--ink);width:30px;height:32px;font-size:18px;cursor:pointer}
+.qty-add-button{position:relative}
+.qty-spark-burst{position:absolute;inset:0;z-index:2;pointer-events:none}
+.qty-spark-burst::before{content:"✦";position:absolute;top:50%;left:50%;color:#ffe078;font-size:10px;line-height:1;text-shadow:0 -10px 0 #fff3b0,9px -6px 0 #ffe078,10px 5px 0 #fff3b0,0 10px 0 #ffe078,-9px 6px 0 #fff3b0,-10px -4px 0 #ffe078;animation:qty-spark-burst .48s ease-out both}
+@keyframes qty-spark-burst{0%{opacity:0;transform:translate(-50%,-50%) scale(.15) rotate(0)}18%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25) rotate(45deg)}}
+@media(prefers-reduced-motion:reduce){.qty-spark-burst{display:none}}
 .qty input{width:48px;text-align:center;border:0;border-radius:0;padding:6px 0;background:transparent}
 .bar{position:sticky;bottom:0;z-index:20;background:rgba(255,253,247,.97);backdrop-filter:blur(8px);border-top:2px solid var(--leaf);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:18px;align-items:center;flex-wrap:wrap;justify-content:center;box-shadow:0 -6px 20px rgba(25,65,45,.09)}
 .bar div span{display:block;font-size:11px;color:var(--mute);text-transform:uppercase}.bar b{font-size:17px}
@@ -100,8 +105,14 @@ footer{background:linear-gradient(160deg,#174b39,#102c25);color:#fff5d9;margin-t
 	.tbl td:nth-child(6){justify-self:end}
 	.tbl td:nth-child(7){grid-column:1/-1;text-align:right;font-weight:700}
 	.tbl td:nth-child(7):not(:empty)::before{content:"Line total: ";font-size:12px;font-weight:500;color:var(--mute)}
-	.qty button{width:44px;height:44px}
-	.qty input{width:46px;min-height:44px}
+	.qty{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;width:146px;min-width:146px;border:1px solid var(--leaf);border-radius:8px;background:var(--card)}
+	.qty button{display:grid;place-items:center;width:48px;height:48px;padding:0;border:0;color:#fff;font-size:26px;font-weight:900;line-height:1}
+	.qty button:first-child{background:var(--brand)}
+	.qty button:last-child{background:var(--leaf)}
+	.qty button:first-child:hover{background:var(--maroon)}
+	.qty button:last-child:hover{background:var(--leaf-dark)}
+	.qty button:focus-visible{position:relative;z-index:1;outline:3px solid var(--saffron);outline-offset:-3px}
+	.qty input{width:46px;min-height:48px;padding:0;border:0;border-radius:0;background:var(--card);color:var(--ink);font-weight:800}
 	.bar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 10px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))}
 	.bar div{min-width:0;text-align:center}
 	.bar div span{font-size:10px;white-space:nowrap}

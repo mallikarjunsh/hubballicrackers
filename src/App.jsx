@@ -57,11 +57,15 @@ const inr = n => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 })
 const load = () => { try { return JSON.parse(localStorage.getItem("spp-cart") || "{}"); } catch (e) { return {}; } };
 
 function Qty({ v, set }) {
+  const [sparkId, setSparkId] = useState(0);
+
   return (
     <div className="qty">
       <button aria-label="decrease" onClick={() => set(Math.max(0, v - 1))}>−</button>
       <input inputMode="numeric" value={v || ""} placeholder="0" onChange={e => set(Math.max(0, parseInt(e.target.value.replace(/\D/g, "")) || 0))} />
-      <button aria-label="increase" onClick={() => set(v + 1)}>+</button>
+      <button className="qty-add-button" aria-label="increase" onClick={() => { set(v + 1); setSparkId(id => id + 1); }}>
+        +{sparkId > 0 && <span key={sparkId} className="qty-spark-burst" aria-hidden="true" />}
+      </button>
     </div>
   );
 }
@@ -264,7 +268,7 @@ export default function App() {
 
       <footer id="contact"><div className="wrap grid">
         <div><img src={LOGO} alt="" style={{ height: 60, display: "block", marginBottom: 6 }} /><h4>About</h4>Hubballi Crackers — Wholesale &amp; Retail Fancy Fireworks. All kinds of crackers available. Genuine products, best quality, trusted dealer.</div>
-        <div><h4>Contact</h4>📍 Tadas Cross, Near Gayatri Matt, Shiggaon 581116<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
+        <div><h4>Contact</h4>📍 Tadas Cross, Near Gayatri Matt, Shiggaon 581116<br />📍 Stall No. 6, APMC Ground, Shiggaon<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
         <div><h4>Notice</h4>Online sale of firecrackers is not permitted (Supreme Court, 2018). Add products to the cart and submit an enquiry; we confirm the order offline.</div>
       </div></footer>
 
