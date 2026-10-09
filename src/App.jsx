@@ -48,7 +48,7 @@ const FALLBACK_DATA = [
   { id: "kids", name: "Kids Attractions", emoji: "🧒", items: [["Butterfly (18 Pcs)", "1 Box", 500], ["Helicopter (5 Pcs)", "1 Box", 650], ["Photo Flash Sticks (5 Pcs)", "1 Box", 800], ["Mega Siren", "1 Box", 1000]] },
   { id: "fount", name: "Fancy Fountains", emoji: "⛲", items: [["Golden Elephant", "1 Pce", 1500], ["Lucky Lion", "1 Pce", 2000], ["Strawberry Cone Fountain", "1 Pce", 1200], ["Tricolour Fountains (5 Pcs)", "1 Box", 1500]] },
   { id: "rocket", name: "Rockets & Bombs", emoji: "🚀", items: [["Musical Rocket", "1 Box", 1000], ["Two Sound Rocket", "1 Box", 1000], ["Hydro Bomb (10 Pcs)", "1 Box", 450], ["1/2 kg Paper Bomb", "1 Pce", 500]] },
-  { id: "night", name: "Multicolour Night Shots", emoji: "🎆", items: [["7 Shots Multicolour", "1 Box", 600], ["12 Shots Crackling", "1 Box", 650], ["30 Shots Multicolour", "1 Box", 2400], ["120 Shots Multicolour", "1 Box", 9600]] },
+  { id: "night", name: "Multicolour Night Shots", emoji: "🎆", items: [["7 Shots Multicolour", "1 Box", 600], ["12 Shots Crackling", "1 Box", 650], ["30 Shots Multicolour", "1 Box", 2400], ["60 Shots Multicolour", "1 Box", 4800], ["120 Shots Multicolour", "1 Box", 9600]] },
   { id: "garland", name: "Festival Garlands", emoji: "🎊", items: [["100 Wala", "1 Box", 180], ["1000 Wala (Short)", "1 Box", 850], ["2000 Wala (Premium)", "1 Box", 3500], ["5000 Wala (Premium)", "1 Box", 8750]] },
   { id: "gift", name: "Gift Boxes", emoji: "🧧", items: [["20 Item Gift Box", "1 Box", 1750], ["30 Item Gift Box", "1 Box", 3000], ["50 Item Gift Box", "1 Box", 5500]] },
 ];

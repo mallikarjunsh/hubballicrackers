@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +14,11 @@ let failures = 0;
 for (const [name, image] of Object.entries(manifest)) {
   const outputPath = path.join(outputDirectory, image.file);
   try {
+    try {
+      await access(outputPath);
+      console.log(`Already saved ${name}`);
+      continue;
+    } catch (e) {}
     const response = await fetch(image.source, {
       headers: {
         referer: sourcePage,
