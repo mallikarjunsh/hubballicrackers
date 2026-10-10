@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { loadRates } from "./firebase";
+import { loadRates, saveOrder, findOrder } from "./firebase";
 import PRODUCT_IMAGE_MANIFEST from "./productImages.json";
 let DISC = 0.2; // 20% off the listed price
 const SHOP = "Hubballi Crackers";
@@ -74,6 +74,7 @@ function HeroCarousel() {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
     const timer = setInterval(() => {
       setActive(i => (i + 1) % CAROUSEL.length);
     }, 4000);
@@ -87,7 +88,7 @@ function HeroCarousel() {
           <div className="carousel-slide" key={slide.title}>
             <img src={slide.image} alt={slide.title} />
             <div className="carousel-overlay">
-              <span>Hubballi Crackers</span>
+              <span>Hubballi Crackers · ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span>
               <h2>{slide.title}</h2>
               <p>{slide.subtitle}</p>
             </div>
@@ -112,6 +113,12 @@ function HeroCarousel() {
 export default function App() {
   const [DATA, setData] = useState(FALLBACK_DATA);
   const [live, setLive] = useState("loading");
+  const [showBrandIntro, setShowBrandIntro] = useState(true);
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => setShowBrandIntro(false), reducedMotion ? 50 : 1800);
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(() => { loadRates().then(r => { if (r) { if (typeof r.discount === "number") DISC = r.discount; if (r.minOrder) MIN = r.minOrder; setData(r.cats); setLive("live"); } else setLive("offline"); }).catch(() => setLive("offline")); }, []);
   const [cart, setCart] = useState(load);
   const [cat, setCat] = useState("all");
@@ -121,6 +128,11 @@ export default function App() {
   const [touched, setTouched] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productImage, setProductImage] = useState(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [lookupId, setLookupId] = useState("");
+  const [lookupState, setLookupState] = useState({ status: "idle" });
   useEffect(() => { try { localStorage.setItem("spp-cart", JSON.stringify(cart)); } catch (e) {} }, [cart]);
   useEffect(() => {
     if (!selectedProduct) { setProductImage(null); return; }
@@ -149,7 +161,7 @@ export default function App() {
 
   const lines = useMemo(() => DATA.flatMap(c => c.items.map(([n, u, p]) => {
     const k = c.id + "|" + n, qn = cart[k] || 0, o = offer(c, p);
-    return { k, n, qn, p, o, c };
+    return { k, n, u, qn, p, o, c };
   })).filter(l => l.qn), [cart, DATA]);
   const actual = lines.reduce((s, l) => s + l.p * l.qn, 0);
   const net = lines.reduce((s, l) => s + l.o * l.qn, 0);
@@ -170,25 +182,80 @@ export default function App() {
   if (f.state && net < min) errs.min = "Minimum order for " + f.state + " is " + inr(min);
   const bad = Object.keys(errs).length > 0;
   const upd = k => e => setF({ ...f, [k]: e.target.value });
-  const msg = () => "Enquiry for " + SHOP + "\n\nName: " + f.name + "\nMobile: " + f.mobile + (f.email ? "\nEmail: " + f.email : "") + "\nCity: " + f.city + ", " + f.state + "\nAddress: " + f.address + "\n\nItems:\n" + lines.map(l => "- " + l.n + " x " + l.qn + " = " + inr(l.o * l.qn)).join("\n") + "\n\nNet Total: " + inr(net) + "\nPacking (3%): " + inr(pack) + "\nYou Save: " + inr(save) + "\nOverall: " + inr(total);
+  const msg = id => "Enquiry for " + SHOP + "\nOrder ID: " + id + "\n\nName: " + f.name + "\nMobile: " + f.mobile + (f.email ? "\nEmail: " + f.email : "") + "\nCity: " + f.city + ", " + f.state + "\nAddress: " + f.address + "\n\nItems:\n" + lines.map(l => "- " + l.n + " x " + l.qn + " = " + inr(l.o * l.qn)).join("\n") + "\n\nNet Total: " + inr(net) + "\nPacking (3%): " + inr(pack) + "\nYou Save: " + inr(save) + "\nOverall: " + inr(total);
   const [sent, setSent] = useState("");
-  const submit = () => { setTouched(true); if (!bad) { setSent(msg()); setStep("done"); setCart({}); } };
+  const submit = async () => {
+    setTouched(true);
+    setSubmitError("");
+    if (bad || savingOrder) return;
+    setSavingOrder(true);
+    try {
+      const id = await saveOrder({
+        customer: { name: f.name.trim(), mobile: f.mobile, email: f.email.trim(), city: f.city.trim(), state: f.state, address: f.address.trim() },
+        items: lines.map(l => ({ name: l.n, unit: l.u, quantity: l.qn, unitPrice: l.o, total: l.o * l.qn })),
+        net,
+        packing: pack,
+        savings: save,
+        total,
+      });
+      setOrderId(id);
+      setSent(msg(id));
+      setStep("done");
+      setCart({});
+    } catch (error) {
+      console.error("Unable to save enquiry to Firebase:", error);
+      setSubmitError(error.message === "Firebase is not configured."
+        ? "Firebase isn't configured yet. Add your project settings to .env and deploy firestore.rules before saving enquiries."
+        : "We couldn't save your enquiry. Please check your connection and try again, or contact us by phone.");
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+  const lookupOrder = async event => {
+    event.preventDefault();
+    setLookupState({ status: "loading" });
+    try {
+      const found = await findOrder(lookupId);
+      setLookupState(found ? { status: "found", order: found } : { status: "missing" });
+    } catch (error) {
+      console.error("Unable to look up order in Firebase:", error);
+      setLookupState({ status: "error", message: error.message === "Firebase is not configured."
+        ? "Firebase isn't configured yet. Add your project settings to .env and deploy firestore.rules to look up orders."
+        : error.message === "Order ID must be a 6-digit number."
+          ? error.message
+        : "We couldn't retrieve that order. Please check your connection and try again." });
+    }
+  };
+  const openOrderLookup = () => {
+    setStep("lookup");
+    window.scrollTo(0, 0);
+  };
   const showProductImage = (name, unit, price, emoji) => setSelectedProduct({ name, unit, price, emoji, image: PRODUCT_IMAGES[name] });
   const Err = ({ k }) => touched && errs[k] ? <div className="err">{errs[k]}</div> : null;
 
   return (
     <>
+      {showBrandIntro && <div className="brand-intro" role="status" aria-label="Hubballi Crackers">
+        <div className="brand-intro-card">
+          <span className="brand-intro-kicker">Welcome to</span>
+          <span className="brand-intro-english">Hubballi Crackers</span>
+          <span className="brand-intro-kannada" lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span>
+          <span className="brand-intro-tagline">Wholesale &amp; Retail · Festive Fireworks</span>
+          <button type="button" className="brand-intro-continue" onClick={() => setShowBrandIntro(false)}>Continue</button>
+        </div>
+      </div>}
       <div className="banner">🔥 Deepavali Special Offer · Festive Savings Up to {Math.round(DISC * 100)}% · Limited Stock 🔥</div>
       <header>
         <img src={LOGO} alt="Hubballi Crackers" style={{ height: 52 }} />
-        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><a href="#safety">Safety Tips</a><a href="#contact">Contact</a></nav>
+        <div className="brand-wordmark"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></div>
+        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find your order</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a></nav>
       </header>
 
       <div className="wrap" id="top">
         {step === "list" && <>
           <div className="hero">
             <div className="mini-badge">🏮 Deepavali Collection</div>
-            <h1>ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್ · Price List</h1>
+            <h1><span className="brand-highlight"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></span><span className="hero-title-rest">Price List</span></h1>
             <p>Wholesale &amp; Retail Fancy Fireworks · Trusted festive store for families across Karnataka and South India.</p>
           </div>
           <HeroCarousel />
@@ -218,6 +285,32 @@ export default function App() {
           ))}
         </>}
 
+        {step === "lookup" && <section className="order-page">
+          <div className="hero"><h1>Find your order</h1><p>Enter the 6-digit Order ID from your enquiry receipt.</p></div>
+          <div className="panel order-lookup" id="order-lookup">
+            <form className="order-lookup-form" onSubmit={lookupOrder}>
+              <label className="sr-only" htmlFor="lookup-order-id">6-digit Order ID</label>
+              <input id="lookup-order-id" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={lookupId} onChange={e => { setLookupId(e.target.value.replace(/\D/g, "").slice(0, 6)); setLookupState({ status: "idle" }); }} placeholder="Enter 6-digit Order ID" required />
+              <button className="btn" type="submit" disabled={lookupState.status === "loading"}>{lookupState.status === "loading" ? "Searching…" : "Find Order"}</button>
+            </form>
+            {lookupState.status === "missing" && <p className="err" role="status">No order was found with that ID.</p>}
+            {lookupState.status === "error" && <p className="err" role="alert">{lookupState.message}</p>}
+            {lookupState.status === "found" && <div className="order-details" role="status">
+              <h3>Order {lookupState.order.id}</h3>
+              <p><b>Status:</b> {lookupState.order.status === "pending_confirmation" ? "Pending store confirmation" : lookupState.order.status}</p>
+              <p><b>Customer:</b> {lookupState.order.customer.name} · {lookupState.order.customer.mobile}</p>
+              {lookupState.order.customer.email && <p><b>Email:</b> {lookupState.order.customer.email}</p>}
+              <p><b>Delivery location:</b> {lookupState.order.customer.city}, {lookupState.order.customer.state} · {lookupState.order.customer.address}</p>
+              {lookupState.order.items.map((item, index) => <div className="row" key={index}><span>{item.name} ({item.unit}) × {item.quantity}</span><span>{inr(item.total)}</span></div>)}
+              <div className="row"><span>Net Total</span><span>{inr(lookupState.order.net)}</span></div>
+              <div className="row"><span>Packing Charges</span><span>{inr(lookupState.order.packing)}</span></div>
+              <div className="row"><span>You Save</span><span>{inr(lookupState.order.savings)}</span></div>
+              <div className="row t"><span>Overall Amount</span><span>{inr(lookupState.order.total)}</span></div>
+            </div>}
+            <button className="btn alt order-back" type="button" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>Back to Pricelist</button>
+          </div>
+        </section>}
+
         {step === "form" && <>
           <div className="hero"><h1>Confirm Your Estimate</h1></div>
           <div className="panel">
@@ -241,15 +334,18 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button className="btn alt" onClick={() => setStep("list")}>Back</button>
-            <button className="btn" onClick={submit}>Submit Enquiry</button>
+            <button className="btn" onClick={submit} disabled={savingOrder}>{savingOrder ? "Saving…" : "Submit Enquiry"}</button>
           </div>
+          {submitError && <p className="err" role="alert" style={{ textAlign: "right" }}>{submitError}</p>}
         </>}
 
-        {step === "done" && <div className="panel ok"><h2>✅ Enquiry received</h2><p>Your enquiry is ready. Send it now so we receive it — we will confirm by WhatsApp or phone.</p>
+        {step === "done" && <div className="panel ok"><h2>✅ Enquiry saved</h2><p>Your details are saved. Send the enquiry to us and keep this Order ID to look up its details. We will confirm by WhatsApp or phone.</p>
+          <p className="order-id">Order ID: <strong>{orderId}</strong></p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", margin: "14px 0" }}>
             <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"mailto:" + SHOP_EMAIL + "?subject=" + encodeURIComponent("Enquiry - " + SHOP) + "&body=" + encodeURIComponent(sent)}>✉️ Send by Email</a>
-            <a className="btn" style={{ textDecoration: "none", background: "#1a8a4a" }} target="_blank" rel="noopener" href={"https://wa.me/91" + PHONES[0] + "?text=" + encodeURIComponent(sent)}>💬 Send on WhatsApp</a>
+            <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"https://wa.me/91" + PHONES[0] + "?text=" + encodeURIComponent(sent)}>💬 Send on WhatsApp</a>
           </div>
+          <button className="btn alt" onClick={openOrderLookup}>Find your order</button>{" "}
           <button className="btn alt" onClick={() => { setStep("list"); setTouched(false); }}>Back to Pricelist</button></div>}
 
         <div className="panel tips" id="safety">
@@ -267,7 +363,7 @@ export default function App() {
       </div>}
 
       <footer id="contact"><div className="wrap grid">
-        <div><img src={LOGO} alt="" style={{ height: 60, display: "block", marginBottom: 6 }} /><h4>About</h4>Hubballi Crackers — Wholesale &amp; Retail Fancy Fireworks. All kinds of crackers available. Genuine products, best quality, trusted dealer.</div>
+        <div><img src={LOGO} alt="" style={{ height: 60, display: "block", marginBottom: 6 }} /><h4>About</h4><b>Hubballi Crackers · ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</b> — Wholesale &amp; Retail Fancy Fireworks. All kinds of crackers available. Genuine products, best quality, trusted dealer.</div>
         <div><h4>Contact</h4>📍 Tadas Cross, Near Gayatri Matt, Shiggaon 581116<br />📍 Stall No. 6, APMC Ground, Shiggaon<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
         <div><h4>Notice</h4>Online sale of firecrackers is not permitted (Supreme Court, 2018). Add products to the cart and submit an enquiry; we confirm the order offline.</div>
       </div></footer>

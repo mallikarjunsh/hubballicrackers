@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "seed:firebase": "node seed.js",
     "download:product-images": "node scripts/downloadProductImages.js",
     "sync:60-shot": "node scripts/sync60ShotProduct.js",
     "preview": "vite preview"

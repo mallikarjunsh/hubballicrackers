@@ -1,9 +1,60 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read: if true;     // customers can read rates
-      allow write: if false;   // edit only from Firebase console / admin SDK
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /orders/{orderId} {
+      allow create: if orderId.matches('^[0-9]{6}$') &&
+        request.resource.data.keys().hasAll([
+          'customer', 'items', 'net', 'packing', 'savings', 'total', 'status', 'createdAt'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'customer', 'items', 'net', 'packing', 'savings', 'total', 'status', 'createdAt'
+        ]) &&
+        request.resource.data.customer is map &&
+        request.resource.data.customer.keys().hasAll([
+          'name', 'mobile', 'email', 'city', 'state', 'address'
+        ]) &&
+        request.resource.data.customer.keys().hasOnly([
+          'name', 'mobile', 'email', 'city', 'state', 'address'
+        ]) &&
+        request.resource.data.customer.name is string &&
+        request.resource.data.customer.name.size() > 0 &&
+        request.resource.data.customer.name.size() <= 100 &&
+        request.resource.data.customer.mobile is string &&
+        request.resource.data.customer.mobile.matches('^[6-9][0-9]{9}$') &&
+        request.resource.data.customer.email is string &&
+        request.resource.data.customer.email.size() <= 254 &&
+        request.resource.data.customer.city is string &&
+        request.resource.data.customer.city.size() > 0 &&
+        request.resource.data.customer.city.size() <= 100 &&
+        request.resource.data.customer.state is string &&
+        request.resource.data.customer.address is string &&
+        request.resource.data.customer.address.size() > 0 &&
+        request.resource.data.customer.address.size() <= 500 &&
+        request.resource.data.items is list &&
+        request.resource.data.items.size() > 0 &&
+        request.resource.data.items.size() <= 100 &&
+        request.resource.data.net is number &&
+        request.resource.data.net >= 0 &&
+        request.resource.data.packing is number &&
+        request.resource.data.packing >= 0 &&
+        request.resource.data.savings is number &&
+        request.resource.data.savings >= 0 &&
+        request.resource.data.total is number &&
+        request.resource.data.total == request.resource.data.net + request.resource.data.packing &&
+        request.resource.data.status == 'pending_confirmation' &&
+        request.resource.data.createdAt == request.time;
+      allow get: if true;
+      allow list, update, delete: if false;
     }
   }
 }
