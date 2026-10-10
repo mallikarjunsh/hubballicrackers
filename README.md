@@ -12,6 +12,13 @@ Copy `.env.example` to `.env`, fill the values, deploy `firestore.rules`, and lo
 `npm run seed:firebase` (put a Firebase Admin service account at `serviceAccount.json`). Without
 `.env`, built-in sample rates are shown. The seeder only writes to an empty catalog or one it
 previously seeded; it refuses to mix sample entries with other product records.
+
+For GitHub Pages builds, add repository Actions variables named
+`VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and
+`VITE_FIREBASE_APP_ID` under **Settings → Secrets and variables → Actions → Variables**.
+The deploy workflow injects them into Vite when building. These are Firebase web-app config
+values and are included in the public site bundle; never put a service-account private key in
+these variables or in any `VITE_` variable.
 Edit `src/App.jsx` for SHOP_EMAIL and PHONES.
 
 ## Enquiries and order lookup
