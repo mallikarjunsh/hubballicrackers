@@ -1,6 +1,7 @@
 [
   {
     "name": "Combo Pack - Starter",
+    "imageUrl": "product-images/combo-pack-starter.webp",
     "unit": "1 Box",
     "price": 3000,
     "category": "Premium Combo Packs",
@@ -11,6 +12,7 @@
   },
   {
     "name": "Combo Pack - Hero",
+    "imageUrl": "product-images/combo-pack-hero.webp",
     "unit": "1 Box",
     "price": 5000,
     "category": "Premium Combo Packs",
@@ -21,6 +23,7 @@
   },
   {
     "name": "Combo Pack - Legend",
+    "imageUrl": "product-images/combo-pack-legend.webp",
     "unit": "4 Box",
     "price": 10000,
     "category": "Premium Combo Packs",
@@ -31,6 +34,7 @@
   },
   {
     "name": "2⅞' Kuruvi",
+    "imageUrl": "product-images/kuruvi-2-7-8.webp",
     "unit": "1 Pkt",
     "price": 35,
     "category": "One Sound Crackers",
@@ -41,6 +45,7 @@
   },
   {
     "name": "3½' Lakshmi",
+    "imageUrl": "product-images/lakshmi-3-5.webp",
     "unit": "1 Pkt",
     "price": 70,
     "category": "One Sound Crackers",
@@ -51,6 +56,7 @@
   },
   {
     "name": "4' Deluxe Lakshmi",
+    "imageUrl": "product-images/deluxe-lakshmi-4.webp",
     "unit": "1 Pkt",
     "price": 175,
     "category": "One Sound Crackers",
@@ -61,6 +67,7 @@
   },
   {
     "name": "Red Bijili (100 Pcs)",
+    "imageUrl": "product-images/red-bijili-100.webp",
     "unit": "1 Pkt",
     "price": 185,
     "category": "One Sound Crackers",
@@ -71,6 +78,7 @@
   },
   {
     "name": "12 Cm Electric Sparklers",
+    "imageUrl": "product-images/electric-sparklers-12cm.webp",
     "unit": "1 Box",
     "price": 210,
     "category": "Sparklers",
@@ -81,6 +89,7 @@
   },
   {
     "name": "12 Cm Colour Sparklers",
+    "imageUrl": "product-images/colour-sparklers-12cm.webp",
     "unit": "1 Box",
     "price": 220,
     "category": "Sparklers",
@@ -91,6 +100,7 @@
   },
   {
     "name": "15 Cm Green Sparklers",
+    "imageUrl": "product-images/green-sparklers-15cm.webp",
     "unit": "2 Box",
     "price": 720,
     "category": "Sparklers",
@@ -101,6 +111,7 @@
   },
   {
     "name": "30 Cm Red Sparklers",
+    "imageUrl": "product-images/red-sparklers-30cm.webp",
     "unit": "2 Box",
     "price": 740,
     "category": "Sparklers",
@@ -111,9 +122,10 @@
   },
   {
     "name": "Ground Chakkar Big (25 Pcs)",
+    "imageUrl": "product-images/ground-chakkar-big.webp",
     "unit": "1 Box",
     "price": 400,
-    "category": "Ground Chakkar & Flower Pots",
+    "category": "Ground Chakkars",
     "emoji": "🌀",
     "net": false,
     "active": true,
@@ -121,9 +133,10 @@
   },
   {
     "name": "Ground Chakkar Deluxe (10 Pcs)",
+    "imageUrl": "product-images/ground-chakkar-deluxe.webp",
     "unit": "1 Box",
     "price": 700,
-    "category": "Ground Chakkar & Flower Pots",
+    "category": "Ground Chakkars",
     "emoji": "🌀",
     "net": false,
     "active": true,
@@ -131,26 +144,29 @@
   },
   {
     "name": "Flower Pots Special (10 Pcs)",
+    "imageUrl": "product-images/flower-pots-special.webp",
     "unit": "1 Box",
     "price": 500,
-    "category": "Ground Chakkar & Flower Pots",
-    "emoji": "🌀",
+    "category": "Flower Pots",
+    "emoji": "🌼",
     "net": false,
     "active": true,
     "order": 13
   },
   {
     "name": "Flower Pots Deluxe (5 Pcs)",
+    "imageUrl": "product-images/flower-pots-deluxe.webp",
     "unit": "1 Box",
     "price": 1250,
-    "category": "Ground Chakkar & Flower Pots",
-    "emoji": "🌀",
+    "category": "Flower Pots",
+    "emoji": "🌼",
     "net": false,
     "active": true,
     "order": 14
   },
   {
     "name": "Butterfly (18 Pcs)",
+    "imageUrl": "product-images/butterfly-18.webp",
     "unit": "1 Box",
     "price": 500,
     "category": "Kids Attractions",
@@ -161,6 +177,7 @@
   },
   {
     "name": "Helicopter (5 Pcs)",
+    "imageUrl": "product-images/helicopter-5.webp",
     "unit": "1 Box",
     "price": 650,
     "category": "Kids Attractions",
@@ -171,6 +188,7 @@
   },
   {
     "name": "Photo Flash Sticks (5 Pcs)",
+    "imageUrl": "product-images/photo-flash-sticks-5.webp",
     "unit": "1 Box",
     "price": 800,
     "category": "Kids Attractions",
@@ -181,6 +199,7 @@
   },
   {
     "name": "Mega Siren",
+    "imageUrl": "product-images/mega-siren.webp",
     "unit": "1 Box",
     "price": 1000,
     "category": "Kids Attractions",
@@ -191,6 +210,7 @@
   },
   {
     "name": "Golden Elephant",
+    "imageUrl": "product-images/golden-elephant.webp",
     "unit": "1 Pce",
     "price": 1500,
     "category": "Fancy Fountains",
@@ -201,6 +221,7 @@
   },
   {
     "name": "Lucky Lion",
+    "imageUrl": "product-images/lucky-lion.webp",
     "unit": "1 Pce",
     "price": 2000,
     "category": "Fancy Fountains",
@@ -211,6 +232,7 @@
   },
   {
     "name": "Strawberry Cone Fountain",
+    "imageUrl": "product-images/strawberry-cone-fountain.webp",
     "unit": "1 Pce",
     "price": 1200,
     "category": "Fancy Fountains",
@@ -221,6 +243,7 @@
   },
   {
     "name": "Tricolour Fountains (5 Pcs)",
+    "imageUrl": "product-images/tricolour-fountains-5.webp",
     "unit": "1 Box",
     "price": 1500,
     "category": "Fancy Fountains",
@@ -231,6 +254,7 @@
   },
   {
     "name": "Musical Rocket",
+    "imageUrl": "product-images/musical-rocket.webp",
     "unit": "1 Box",
     "price": 1000,
     "category": "Rockets & Bombs",
@@ -241,6 +265,7 @@
   },
   {
     "name": "Two Sound Rocket",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 1000,
     "category": "Rockets & Bombs",
@@ -251,6 +276,7 @@
   },
   {
     "name": "Hydro Bomb (10 Pcs)",
+    "imageUrl": "product-images/hydro-bomb-10.webp",
     "unit": "1 Box",
     "price": 450,
     "category": "Rockets & Bombs",
@@ -261,6 +287,7 @@
   },
   {
     "name": "1/2 kg Paper Bomb",
+    "imageUrl": null,
     "unit": "1 Pce",
     "price": 500,
     "category": "Rockets & Bombs",
@@ -271,6 +298,7 @@
   },
   {
     "name": "7 Shots Multicolour",
+    "imageUrl": "product-images/shots-7-multicolour.webp",
     "unit": "1 Box",
     "price": 600,
     "category": "Multicolour Night Shots",
@@ -281,6 +309,7 @@
   },
   {
     "name": "12 Shots Crackling",
+    "imageUrl": "product-images/shots-12-crackling.webp",
     "unit": "1 Box",
     "price": 650,
     "category": "Multicolour Night Shots",
@@ -291,6 +320,7 @@
   },
   {
     "name": "30 Shots Multicolour",
+    "imageUrl": "product-images/shots-30-multicolour.webp",
     "unit": "1 Box",
     "price": 900,
     "category": "Multicolour Night Shots",
@@ -301,6 +331,7 @@
   },
   {
     "name": "60 Shots Multicolour",
+    "imageUrl": "product-images/shots-60-multicolour.webp",
     "unit": "1 Box",
     "price": 4800,
     "category": "Multicolour Night Shots",
@@ -311,6 +342,7 @@
   },
   {
     "name": "120 Shots Multicolour",
+    "imageUrl": "product-images/shots-120-multicolour.webp",
     "unit": "1 Box",
     "price": 9600,
     "category": "Multicolour Night Shots",
@@ -321,6 +353,7 @@
   },
   {
     "name": "100 Wala",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 180,
     "category": "Festival Garlands",
@@ -331,6 +364,7 @@
   },
   {
     "name": "1000 Wala (Short)",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 850,
     "category": "Festival Garlands",
@@ -341,6 +375,7 @@
   },
   {
     "name": "2000 Wala (Premium)",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 3500,
     "category": "Festival Garlands",
@@ -351,6 +386,7 @@
   },
   {
     "name": "5000 Wala (Premium)",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 8750,
     "category": "Festival Garlands",
@@ -361,6 +397,7 @@
   },
   {
     "name": "20 Item Gift Box",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 1750,
     "category": "Gift Boxes",
@@ -371,6 +408,7 @@
   },
   {
     "name": "30 Item Gift Box",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 3000,
     "category": "Gift Boxes",
@@ -381,6 +419,7 @@
   },
   {
     "name": "50 Item Gift Box",
+    "imageUrl": null,
     "unit": "1 Box",
     "price": 5500,
     "category": "Gift Boxes",
@@ -388,5 +427,39 @@
     "net": false,
     "active": true,
     "order": 38
+  },
+  {
+    "name": "Spark Showers (5 Pcs)",
+    "imageUrl": "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789126103_6aa3e5d792320.webp",
+    "unit": "1 Box",
+    "price": 620,
+    "offerPrice": 124,
+    "category": "Fancy Fountains",
+    "emoji": "⛲",
+    "net": false,
+    "active": true,
+    "order": 39
+  },
+  {
+    "name": "Rainbow Spinner Big",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 0,
+    "category": "Ground Chakkars",
+    "emoji": "🌀",
+    "net": false,
+    "active": false,
+    "order": 40
+  },
+  {
+    "name": "Rainbow Spinner Spl",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 0,
+    "category": "Ground Chakkars",
+    "emoji": "🌀",
+    "net": false,
+    "active": false,
+    "order": 41
   }
 ]

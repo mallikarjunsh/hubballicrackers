@@ -24,7 +24,7 @@ export async function loadRates() {
   rows.forEach(p => {
     let c = cats.find(x => x.name === p.category);
     if (!c) { c = { id: "c" + cats.length, name: p.category, emoji: p.emoji || "🎆", net: !!p.net, items: [] }; cats.push(c); }
-    c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0]);
+    c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice]);
   });
   const s = st.exists() ? st.data() : {};
   return { cats, discount: s.discount, minOrder: s.minOrder };

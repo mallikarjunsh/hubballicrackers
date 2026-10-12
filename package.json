@@ -12,6 +12,7 @@
   "private": "true",
   "type": "module",
   "dependencies": {
+    "@google-cloud/firestore": "^9.1.0",
     "firebase": "^13.0.0",
     "firebase-admin": "^14.5.0",
     "react": "^19.3.0",

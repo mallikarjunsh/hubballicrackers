@@ -22,37 +22,52 @@ const getCachedProductImage = source => {
   let pending = pendingProductImages.get(source);
   if (!pending) {
     pending = (async () => {
+      const imageUrl = new URL(source, window.location.href);
+      if (imageUrl.origin !== window.location.origin) {
+        await new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = resolve;
+          image.onerror = () => reject(new Error("Image request failed"));
+          image.src = imageUrl.href;
+        });
+        return { src: imageUrl.href, fromCache: false, cacheable: false };
+      }
       const cache = "caches" in window ? await caches.open(PRODUCT_IMAGE_CACHE) : null;
-      let response = cache ? await cache.match(source) : null;
+      let response = cache ? await cache.match(imageUrl.href) : null;
       const fromCache = !!response;
       if (!response) {
-        response = await fetch(source, { mode: "cors" });
+        response = await fetch(imageUrl.href);
         if (!response.ok) throw new Error("Image request failed");
         if (cache) {
-          try { await cache.put(source, response.clone()); } catch (e) {}
+          try { await cache.put(imageUrl.href, response.clone()); } catch (e) {}
         }
       }
-      return { blob: await response.blob(), fromCache };
+      return { blob: await response.blob(), fromCache, cacheable: true };
     })().finally(() => pendingProductImages.delete(source));
     pendingProductImages.set(source, pending);
   }
-  return pending.then(({ blob, fromCache }) => ({ src: URL.createObjectURL(blob), fromCache }));
+  return pending.then(({ blob, fromCache, cacheable }) => ({
+    src: blob ? URL.createObjectURL(blob) : source,
+    fromCache,
+    cacheable,
+  }));
 };
 let MIN = { "Karnataka": 1000, "Maharashtra": 3000, "Goa": 3000 };
-// [name, unit, printed price]
+// [name, unit, printed price, image URL, optional offer price]
 const FALLBACK_DATA = [
   { id: "combo", name: "Premium Combo Packs", emoji: "🎁", net: true, items: [["Combo Pack - Starter", "1 Box", 3000], ["Combo Pack - Hero", "1 Box", 5000], ["Combo Pack - Legend", "4 Box", 10000]] },
   { id: "sound", name: "One Sound Crackers", emoji: "💥", items: [["2⅞' Kuruvi", "1 Pkt", 35], ["3½' Lakshmi", "1 Pkt", 70], ["4' Deluxe Lakshmi", "1 Pkt", 175], ["Red Bijili (100 Pcs)", "1 Pkt", 185]] },
   { id: "spark", name: "Sparklers", emoji: "✨", items: [["12 Cm Electric Sparklers", "1 Box", 210], ["12 Cm Colour Sparklers", "1 Box", 220], ["15 Cm Green Sparklers", "2 Box", 720], ["30 Cm Red Sparklers", "2 Box", 740]] },
-  { id: "chakkar", name: "Ground Chakkar & Flower Pots", emoji: "🌀", items: [["Ground Chakkar Big (25 Pcs)", "1 Box", 400], ["Ground Chakkar Deluxe (10 Pcs)", "1 Box", 700], ["Flower Pots Special (10 Pcs)", "1 Box", 500], ["Flower Pots Deluxe (5 Pcs)", "1 Box", 1250]] },
+  { id: "chakkar", name: "Ground Chakkars", emoji: "🌀", items: [["Ground Chakkar Big (25 Pcs)", "1 Box", 400], ["Ground Chakkar Deluxe (10 Pcs)", "1 Box", 700]] },
+  { id: "flower-pots", name: "Flower Pots", emoji: "🌼", items: [["Flower Pots Special (10 Pcs)", "1 Box", 500], ["Flower Pots Deluxe (5 Pcs)", "1 Box", 1250]] },
   { id: "kids", name: "Kids Attractions", emoji: "🧒", items: [["Butterfly (18 Pcs)", "1 Box", 500], ["Helicopter (5 Pcs)", "1 Box", 650], ["Photo Flash Sticks (5 Pcs)", "1 Box", 800], ["Mega Siren", "1 Box", 1000]] },
-  { id: "fount", name: "Fancy Fountains", emoji: "⛲", items: [["Golden Elephant", "1 Pce", 1500], ["Lucky Lion", "1 Pce", 2000], ["Strawberry Cone Fountain", "1 Pce", 1200], ["Tricolour Fountains (5 Pcs)", "1 Box", 1500]] },
+  { id: "fount", name: "Fancy Fountains", emoji: "⛲", items: [["Golden Elephant", "1 Pce", 1500], ["Lucky Lion", "1 Pce", 2000], ["Strawberry Cone Fountain", "1 Pce", 1200], ["Tricolour Fountains (5 Pcs)", "1 Box", 1500], ["Spark Showers (5 Pcs)", "1 Box", 620, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789126103_6aa3e5d792320.webp", 124]] },
   { id: "rocket", name: "Rockets & Bombs", emoji: "🚀", items: [["Musical Rocket", "1 Box", 1000], ["Two Sound Rocket", "1 Box", 1000], ["Hydro Bomb (10 Pcs)", "1 Box", 450], ["1/2 kg Paper Bomb", "1 Pce", 500]] },
   { id: "night", name: "Multicolour Night Shots", emoji: "🎆", items: [["7 Shots Multicolour", "1 Box", 600], ["12 Shots Crackling", "1 Box", 650], ["30 Shots Multicolour", "1 Box", 2400], ["60 Shots Multicolour", "1 Box", 4800], ["120 Shots Multicolour", "1 Box", 9600]] },
   { id: "garland", name: "Festival Garlands", emoji: "🎊", items: [["100 Wala", "1 Box", 180], ["1000 Wala (Short)", "1 Box", 850], ["2000 Wala (Premium)", "1 Box", 3500], ["5000 Wala (Premium)", "1 Box", 8750]] },
   { id: "gift", name: "Gift Boxes", emoji: "🧧", items: [["20 Item Gift Box", "1 Box", 1750], ["30 Item Gift Box", "1 Box", 3000], ["50 Item Gift Box", "1 Box", 5500]] },
 ];
-const offer = (cat, p) => (cat.net ? p : Math.round(p * (1 - DISC)));
+const offer = (cat, p, offerPrice) => (offerPrice ?? (cat.net ? p : Math.round(p * (1 - DISC))));
 const inr = n => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const load = () => { try { return JSON.parse(localStorage.getItem("spp-cart") || "{}"); } catch (e) { return {}; } };
 
@@ -139,10 +154,10 @@ export default function App() {
     let active = true, objectUrl;
     if (!selectedProduct.image) { setProductImage({ status: "missing" }); return; }
     setProductImage({ status: "loading" });
-    getCachedProductImage(selectedProduct.image).then(({ src, fromCache }) => {
+    getCachedProductImage(selectedProduct.image).then(({ src, fromCache, cacheable }) => {
       objectUrl = src;
-      if (active) setProductImage({ status: "loaded", src, fromCache });
-      else URL.revokeObjectURL(src);
+      if (active) setProductImage({ status: "loaded", src, fromCache, cacheable });
+      else if (cacheable) URL.revokeObjectURL(src);
     }).catch(() => { if (active) setProductImage({ status: "error" }); });
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [selectedProduct]);
@@ -230,7 +245,14 @@ export default function App() {
     setStep("lookup");
     window.scrollTo(0, 0);
   };
-  const showProductImage = (name, unit, price, emoji) => setSelectedProduct({ name, unit, price, emoji, image: PRODUCT_IMAGES[name] });
+  const showProductImage = (name, unit, price, emoji, imageUrl) => {
+    const image = imageUrl === undefined
+      ? PRODUCT_IMAGES[name]
+      : imageUrl
+        ? new URL(imageUrl, new URL(ASSET_BASE, window.location.href)).href
+        : null;
+    setSelectedProduct({ name, unit, price, emoji, image });
+  };
   const Err = ({ k }) => touched && errs[k] ? <div className="err">{errs[k]}</div> : null;
 
   return (
@@ -269,13 +291,13 @@ export default function App() {
           {shown.length === 0 && <div className="empty">No products match “{q}”.</div>}
           {shown.map(c => (
             <section key={c.id}>
-              <h2 className="cat">{c.emoji} {c.name} <small>{c.net ? "NET RATE" : Math.round(DISC * 100) + "% OFF"}</small></h2>
+              <h2 className="cat">{c.emoji} {c.name} <small>{c.net ? "NET RATE" : c.items.some(item => item[4] != null) ? "SPECIAL OFFERS" : Math.round(DISC * 100) + "% OFF"}</small></h2>
               <div className="tbl"><table>
                 <thead><tr><th></th><th>Product</th><th>Content</th><th>Actual</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead>
-                <tbody>{c.items.map(([n, u, p]) => {
-                  const k = c.id + "|" + n, v = cart[k] || 0, o = offer(c, p);
+                <tbody>{c.items.map(([n, u, p, imageUrl, offerPrice]) => {
+                  const k = c.id + "|" + n, v = cart[k] || 0, o = offer(c, p, offerPrice);
                   return <tr key={k}>
-                    <td className="em">{c.emoji}</td><td><button className="product-image-trigger" type="button" onClick={() => showProductImage(n, u, o, c.emoji)} title={`View ${n} image`}>{n}</button></td><td>{u}</td>
+                    <td className="em">{c.emoji}</td><td><button className="product-image-trigger" type="button" onClick={() => showProductImage(n, u, o, c.emoji, imageUrl)} title={`View ${n} image`}>{n}</button></td><td>{u}</td>
                     <td className={c.net ? "" : "old"}>{c.net ? "—" : inr(p)}</td><td className="price">{inr(o)}</td>
                     <td><Qty v={v} set={n2 => setQty(k, n2)} /></td><td><b>{v ? inr(v * o) : ""}</b></td>
                   </tr>;
@@ -379,11 +401,11 @@ export default function App() {
           <div className="product-image-frame">
             {productImage?.status === "loading" && <p>Loading photo and saving it to this browser…</p>}
             {productImage?.status === "loaded" && <img src={productImage.src} alt={selectedProduct.name} />}
-            {productImage?.status === "missing" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>This product has no photo in the supplied catalog.</p></div>}
+            {productImage?.status === "missing" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>This product has no photo URL in the product catalog.</p></div>}
             {productImage?.status === "error" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>The photo could not be loaded. Please try again while online.</p></div>}
           </div>
           <div className="product-image-footer">
-            <span>{productImage?.status === "loaded" ? (productImage.fromCache ? "Loaded from this browser’s saved image cache." : "Saved in this browser for next time.") : "Images are cached in this browser after their first successful load."}</span>
+            <span>{productImage?.status === "loaded" ? (productImage.fromCache ? "Loaded from this browser’s saved image cache." : productImage.cacheable ? "Saved in this browser for next time." : "Loaded from the product image URL.") : "Images are cached in this browser after their first successful load."}</span>
             <a href="https://mtpcrackers.in/products.php?device=desktop" target="_blank" rel="noopener noreferrer">Photo source: MTP Crackers</a>
           </div>
         </section>
