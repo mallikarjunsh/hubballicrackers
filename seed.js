@@ -89,6 +89,7 @@ const expectedProducts = new Map(products.map(product => [productDocumentId(prod
 const legacyProductNames = new Map([
   ["12-cm-colour-sparklers", ["10 Cm Colour Sparklers", "12 Cm Colour Sparklers"]],
   ["12-cm-electric-sparklers", ["10 Cm Electric Sparklers", "12 Cm Electric Sparklers"]],
+  ["butterfly-18-pcs", "Butterfly (18 Pcs)"],
   ["15-cm-green-sparklers", "15 Cm Green Sparklers"],
   ["30-cm-red-sparklers", "30 Cm Red Sparklers"],
   ["12-shots-crackling", "12 Shots Crackling"],
