@@ -29,11 +29,13 @@ optional `offerPrice` to override the shop-wide discount for a special price.
 The seeder validates the catalog and uses readable document IDs derived from product names, such as
 `combo-pack-starter`. It replaces its managed catalog, migrates the old `sample-###` IDs, and
 refuses to overwrite unrecognized product records. Inactive products remain in Firestore but are
-hidden from the storefront. Ground Chakkars and Flower Pots are separate categories. Rainbow
-Spinner Big and Rainbow Spinner Spl are inactive placeholders until their prices are configured:
-enter verified prices and any image URLs in `products.json`, set `active` to `true`, then rerun
-`npm run seed:firebase`. Without Firebase catalog data, the storefront displays its built-in sample
-rates.
+hidden from the storefront. Ground Chakkars and Flower Pots are separate categories. All Ground
+Chakkars are sold as `1 Box (10 Pcs)`. The Ground Chakkars catalog includes Rainbow Spinner Special
+(Sunshine) and Rainbow Spinner Deluxe (Sunshine) with their configured offer prices and image URLs.
+Sparklers, Multicolour Night Shots, Single Shots, Kids Attractions, and Rockets & Bombs use the
+latest configured product lists and offer prices. Combo pack images use local PNG assets.
+Festival Garlands list Wala products without Short/Premium labels and include 10000 Wala. Without
+Firebase catalog data, the storefront displays its built-in sample rates.
 
 For GitHub Pages builds, add repository Actions variables named
 `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and

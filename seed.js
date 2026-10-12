@@ -87,15 +87,27 @@ const db = getFirestore();
 const existing = await db.collection("products").get();
 const expectedProducts = new Map(products.map(product => [productDocumentId(product.name), product]));
 const legacyProductNames = new Map([
-  ["12-cm-colour-sparklers", "10 Cm Colour Sparklers"],
-  ["12-cm-electric-sparklers", "10 Cm Electric Sparklers"],
-  ["ground-chakkar-big-25-pcs", "Ground Chakkar Big (10 Pcs)"],
+  ["12-cm-colour-sparklers", ["10 Cm Colour Sparklers", "12 Cm Colour Sparklers"]],
+  ["12-cm-electric-sparklers", ["10 Cm Electric Sparklers", "12 Cm Electric Sparklers"]],
+  ["15-cm-green-sparklers", "15 Cm Green Sparklers"],
+  ["30-cm-red-sparklers", "30 Cm Red Sparklers"],
+  ["12-shots-crackling", "12 Shots Crackling"],
+  ["30-shots-multicolour", "30 Shots Multicolour"],
+  ["60-shots-multicolour", "60 Shots Multicolour"],
+  ["120-shots-multicolour", "120 Shots Multicolour"],
+  ["ground-chakkar-big-25-pcs", "Ground Chakkar Big (25 Pcs)"],
+  ["rainbow-spinner-big", "Rainbow Spinner Big"],
+  ["rainbow-spinner-spl", "Rainbow Spinner Spl"],
+  ["1000-wala-short", "1000 Wala (Short)"],
+  ["2000-wala-premium", "2000 Wala (Premium)"],
+  ["5000-wala-premium", "5000 Wala (Premium)"],
 ]);
 const unrelatedProducts = existing.docs.filter(product => {
   const name = product.data().name;
   if (/^sample-\d{3}$/.test(product.id)) return false;
   if (expectedProducts.get(product.id)?.name === name) return false;
-  return legacyProductNames.get(product.id) !== name;
+  const legacyNames = legacyProductNames.get(product.id);
+  return !(Array.isArray(legacyNames) ? legacyNames.includes(name) : legacyNames === name);
 });
 
 if (unrelatedProducts.length) {

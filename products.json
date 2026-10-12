@@ -1,7 +1,7 @@
 [
   {
     "name": "Combo Pack - Starter",
-    "imageUrl": "product-images/combo-pack-starter.webp",
+    "imageUrl": "product-images/combo-pack-starter.png",
     "unit": "1 Box",
     "price": 3000,
     "category": "Premium Combo Packs",
@@ -12,7 +12,7 @@
   },
   {
     "name": "Combo Pack - Hero",
-    "imageUrl": "product-images/combo-pack-hero.webp",
+    "imageUrl": "product-images/combo-pack-hero.png",
     "unit": "1 Box",
     "price": 5000,
     "category": "Premium Combo Packs",
@@ -23,7 +23,7 @@
   },
   {
     "name": "Combo Pack - Legend",
-    "imageUrl": "product-images/combo-pack-legend.webp",
+    "imageUrl": "product-images/combo-pack-legend.png",
     "unit": "4 Box",
     "price": 10000,
     "category": "Premium Combo Packs",
@@ -77,10 +77,35 @@
     "order": 6
   },
   {
-    "name": "12 Cm Electric Sparklers",
+    "name": "Hydro Bomb",
+    "imageUrl": "product-images/hydro-bomb.png",
+    "unit": "1 Box",
+    "price": 270,
+    "offerPrice": 160,
+    "category": "Rockets & Bombs",
+    "emoji": "🚀",
+    "net": false,
+    "active": true,
+    "order": 52
+  },
+  {
+    "name": "777 Agni Bomb",
+    "imageUrl": "product-images/777-agni-bomb.png",
+    "unit": "1 Box",
+    "price": 370,
+    "offerPrice": 240,
+    "category": "Rockets & Bombs",
+    "emoji": "🚀",
+    "net": false,
+    "active": true,
+    "order": 53
+  },
+  {
+    "name": "10 Cm Sparklers",
     "imageUrl": "product-images/electric-sparklers-12cm.webp",
     "unit": "1 Box",
-    "price": 210,
+    "price": 50,
+    "offerPrice": 30,
     "category": "Sparklers",
     "emoji": "✨",
     "net": false,
@@ -88,32 +113,11 @@
     "order": 7
   },
   {
-    "name": "12 Cm Colour Sparklers",
-    "imageUrl": "product-images/colour-sparklers-12cm.webp",
+    "name": "50 Cm Sparklers",
+    "imageUrl": null,
     "unit": "1 Box",
-    "price": 220,
-    "category": "Sparklers",
-    "emoji": "✨",
-    "net": false,
-    "active": true,
-    "order": 8
-  },
-  {
-    "name": "15 Cm Green Sparklers",
-    "imageUrl": "product-images/green-sparklers-15cm.webp",
-    "unit": "2 Box",
-    "price": 720,
-    "category": "Sparklers",
-    "emoji": "✨",
-    "net": false,
-    "active": true,
-    "order": 9
-  },
-  {
-    "name": "30 Cm Red Sparklers",
-    "imageUrl": "product-images/red-sparklers-30cm.webp",
-    "unit": "2 Box",
-    "price": 740,
+    "price": 250,
+    "offerPrice": 200,
     "category": "Sparklers",
     "emoji": "✨",
     "net": false,
@@ -121,9 +125,33 @@
     "order": 10
   },
   {
-    "name": "Ground Chakkar Big (25 Pcs)",
-    "imageUrl": "product-images/ground-chakkar-big.webp",
+    "name": "15 Cm Sparklers",
+    "imageUrl": "product-images/green-sparklers-15cm.webp",
     "unit": "1 Box",
+    "price": 100,
+    "offerPrice": 50,
+    "category": "Sparklers",
+    "emoji": "✨",
+    "net": false,
+    "active": true,
+    "order": 8
+  },
+  {
+    "name": "30 Cm Sparklers",
+    "imageUrl": "product-images/red-sparklers-30cm.webp",
+    "unit": "1 Box",
+    "price": 120,
+    "offerPrice": 70,
+    "category": "Sparklers",
+    "emoji": "✨",
+    "net": false,
+    "active": true,
+    "order": 9
+  },
+  {
+    "name": "Ground Chakkar Big (10 Pcs)",
+    "imageUrl": "product-images/ground-chakkar-big.webp",
+    "unit": "1 Box (10 Pcs)",
     "price": 400,
     "category": "Ground Chakkars",
     "emoji": "🌀",
@@ -134,7 +162,7 @@
   {
     "name": "Ground Chakkar Deluxe (10 Pcs)",
     "imageUrl": "product-images/ground-chakkar-deluxe.webp",
-    "unit": "1 Box",
+    "unit": "1 Box (10 Pcs)",
     "price": 700,
     "category": "Ground Chakkars",
     "emoji": "🌀",
@@ -207,6 +235,114 @@
     "net": false,
     "active": true,
     "order": 18
+  },
+  {
+    "name": "Little Peacock",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 250,
+    "offerPrice": 200,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 54
+  },
+  {
+    "name": "Rising Peacock",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 350,
+    "offerPrice": 250,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 55
+  },
+  {
+    "name": "Bada Peacock",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 650,
+    "offerPrice": 500,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 56
+  },
+  {
+    "name": "Shell Bomb - ARD",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 400,
+    "offerPrice": 340,
+    "category": "Rockets & Bombs",
+    "emoji": "🚀",
+    "net": false,
+    "active": true,
+    "order": 62
+  },
+  {
+    "name": "Chitputhi - Small (Rehboth)",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 90,
+    "offerPrice": 70,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 60
+  },
+  {
+    "name": "Chitputhi - Big (Rehboth)",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 120,
+    "offerPrice": 100,
+    "category": "Kids Attractions",
+    "emoji": "🧒",
+    "net": false,
+    "active": true,
+    "order": 61
+  },
+  {
+    "name": "Single Shots - 2 inch (3 Pieces) - Narayan",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 600,
+    "offerPrice": 440,
+    "category": "Single Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 57
+  },
+  {
+    "name": "Single Shots - 3 inch - Supreme",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 600,
+    "offerPrice": 490,
+    "category": "Single Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 58
+  },
+  {
+    "name": "Single Shots - 4 inch - VB",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 700,
+    "offerPrice": 540,
+    "category": "Single Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 59
   },
   {
     "name": "Golden Elephant",
@@ -304,14 +440,15 @@
     "category": "Multicolour Night Shots",
     "emoji": "🎆",
     "net": false,
-    "active": true,
+    "active": false,
     "order": 27
   },
   {
-    "name": "12 Shots Crackling",
-    "imageUrl": "product-images/shots-12-crackling.webp",
+    "name": "12 Shot Multi Color",
+    "imageUrl": null,
     "unit": "1 Box",
-    "price": 650,
+    "price": 450,
+    "offerPrice": 340,
     "category": "Multicolour Night Shots",
     "emoji": "🎆",
     "net": false,
@@ -319,10 +456,11 @@
     "order": 28
   },
   {
-    "name": "30 Shots Multicolour",
-    "imageUrl": "product-images/shots-30-multicolour.webp",
+    "name": "15 Shot Multi Color",
+    "imageUrl": null,
     "unit": "1 Box",
-    "price": 900,
+    "price": 550,
+    "offerPrice": 430,
     "category": "Multicolour Night Shots",
     "emoji": "🎆",
     "net": false,
@@ -330,10 +468,11 @@
     "order": 29
   },
   {
-    "name": "60 Shots Multicolour",
-    "imageUrl": "product-images/shots-60-multicolour.webp",
+    "name": "30 Shot Multi Color",
+    "imageUrl": "product-images/shots-30-multicolour.webp",
     "unit": "1 Box",
-    "price": 4800,
+    "price": 770,
+    "offerPrice": 650,
     "category": "Multicolour Night Shots",
     "emoji": "🎆",
     "net": false,
@@ -341,15 +480,40 @@
     "order": 30
   },
   {
-    "name": "120 Shots Multicolour",
-    "imageUrl": "product-images/shots-120-multicolour.webp",
+    "name": "60 Shot Multi Color",
+    "imageUrl": "product-images/shots-60-multicolour.webp",
     "unit": "1 Box",
-    "price": 9600,
+    "price": 1250,
+    "offerPrice": 1050,
     "category": "Multicolour Night Shots",
     "emoji": "🎆",
     "net": false,
     "active": true,
     "order": 31
+  },
+  {
+    "name": "120 Shot Multi Color",
+    "imageUrl": "product-images/shots-120-multicolour.webp",
+    "unit": "1 Box",
+    "price": 2350,
+    "offerPrice": 1840,
+    "category": "Multicolour Night Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 32
+  },
+  {
+    "name": "240 Shot Multi Color",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 4550,
+    "offerPrice": 3540,
+    "category": "Multicolour Night Shots",
+    "emoji": "🎆",
+    "net": false,
+    "active": true,
+    "order": 33
   },
   {
     "name": "100 Wala",
@@ -360,40 +524,43 @@
     "emoji": "🎊",
     "net": false,
     "active": true,
-    "order": 32
-  },
-  {
-    "name": "1000 Wala (Short)",
-    "imageUrl": null,
-    "unit": "1 Box",
-    "price": 850,
-    "category": "Festival Garlands",
-    "emoji": "🎊",
-    "net": false,
-    "active": true,
-    "order": 33
-  },
-  {
-    "name": "2000 Wala (Premium)",
-    "imageUrl": null,
-    "unit": "1 Box",
-    "price": 3500,
-    "category": "Festival Garlands",
-    "emoji": "🎊",
-    "net": false,
-    "active": true,
     "order": 34
   },
   {
-    "name": "5000 Wala (Premium)",
+    "name": "1000 Wala",
     "imageUrl": null,
     "unit": "1 Box",
-    "price": 8750,
+    "price": 300,
+    "offerPrice": 250,
     "category": "Festival Garlands",
     "emoji": "🎊",
     "net": false,
     "active": true,
     "order": 35
+  },
+  {
+    "name": "2000 Wala",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 550,
+    "offerPrice": 460,
+    "category": "Festival Garlands",
+    "emoji": "🎊",
+    "net": false,
+    "active": true,
+    "order": 36
+  },
+  {
+    "name": "5000 Wala",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 1100,
+    "offerPrice": 900,
+    "category": "Festival Garlands",
+    "emoji": "🎊",
+    "net": false,
+    "active": true,
+    "order": 37
   },
   {
     "name": "20 Item Gift Box",
@@ -404,7 +571,7 @@
     "emoji": "🧧",
     "net": false,
     "active": true,
-    "order": 36
+    "order": 38
   },
   {
     "name": "30 Item Gift Box",
@@ -415,7 +582,7 @@
     "emoji": "🧧",
     "net": false,
     "active": true,
-    "order": 37
+    "order": 39
   },
   {
     "name": "50 Item Gift Box",
@@ -426,7 +593,7 @@
     "emoji": "🧧",
     "net": false,
     "active": true,
-    "order": 38
+    "order": 40
   },
   {
     "name": "Spark Showers (5 Pcs)",
@@ -438,28 +605,123 @@
     "emoji": "⛲",
     "net": false,
     "active": true,
-    "order": 39
-  },
-  {
-    "name": "Rainbow Spinner Big",
-    "imageUrl": null,
-    "unit": "1 Box",
-    "price": 0,
-    "category": "Ground Chakkars",
-    "emoji": "🌀",
-    "net": false,
-    "active": false,
-    "order": 40
-  },
-  {
-    "name": "Rainbow Spinner Spl",
-    "imageUrl": null,
-    "unit": "1 Box",
-    "price": 0,
-    "category": "Ground Chakkars",
-    "emoji": "🌀",
-    "net": false,
-    "active": false,
     "order": 41
+  },
+  {
+    "name": "Rainbow Spinner Special (Sunshine)",
+    "imageUrl": "https://www.rudracrackers.com/uploads/1787572750045-571abc98008e1556.jpeg",
+    "unit": "1 Box (10 Pcs)",
+    "price": 675,
+    "offerPrice": 135,
+    "category": "Ground Chakkars",
+    "emoji": "🌀",
+    "net": false,
+    "active": true,
+    "order": 42
+  },
+  {
+    "name": "Rainbow Spinner Deluxe (Sunshine)",
+    "imageUrl": "https://www.rudracrackers.com/uploads/1787572764573-ced2b5f915fa42d5.jpeg",
+    "unit": "1 Box (10 Pcs)",
+    "price": 900,
+    "offerPrice": 180,
+    "category": "Ground Chakkars",
+    "emoji": "🌀",
+    "net": false,
+    "active": true,
+    "order": 43
+  },
+  {
+    "name": "F.P. Asoka (10 Pcs)",
+    "imageUrl": "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789111782_6aa3ade6d0acc.webp",
+    "unit": "1 Box (10 Pcs)",
+    "price": 700,
+    "offerPrice": 140,
+    "category": "Flower Pots",
+    "emoji": "🌼",
+    "net": false,
+    "active": true,
+    "order": 44
+  },
+  {
+    "name": "Colour Koti (10 Pcs)",
+    "imageUrl": "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789111807_6aa3adffbcce4.webp",
+    "unit": "1 Box (10 Pcs)",
+    "price": 1250,
+    "offerPrice": 250,
+    "category": "Flower Pots",
+    "emoji": "🌼",
+    "net": false,
+    "active": true,
+    "order": 45
+  },
+  {
+    "name": "10000 Wala",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 2150,
+    "offerPrice": 1800,
+    "category": "Festival Garlands",
+    "emoji": "🎊",
+    "net": false,
+    "active": true,
+    "order": 46
+  },
+  {
+    "name": "Sun Drop",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 230,
+    "offerPrice": 140,
+    "category": "Fancy Fountains",
+    "emoji": "⛲",
+    "net": false,
+    "active": true,
+    "order": 47
+  },
+  {
+    "name": "Moon Drop",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 230,
+    "offerPrice": 140,
+    "category": "Fancy Fountains",
+    "emoji": "⛲",
+    "net": false,
+    "active": true,
+    "order": 48
+  },
+  {
+    "name": "Ashwini",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 650,
+    "category": "Goa",
+    "emoji": "🎆",
+    "net": true,
+    "active": true,
+    "order": 49
+  },
+  {
+    "name": "Ashwini Box",
+    "imageUrl": null,
+    "unit": "1 Box",
+    "price": 700,
+    "category": "Goa",
+    "emoji": "🎆",
+    "net": true,
+    "active": true,
+    "order": 50
+  },
+  {
+    "name": "ARD",
+    "imageUrl": "product-images/ard.avif",
+    "unit": "1 Box",
+    "price": 850,
+    "category": "Goa",
+    "emoji": "🎆",
+    "net": true,
+    "active": true,
+    "order": 51
   }
 ]
