@@ -196,12 +196,8 @@ export default function App() {
   const [orderId, setOrderId] = useState("");
   const [lookupId, setLookupId] = useState("");
   const [lookupState, setLookupState] = useState({ status: "idle" });
-  const [historyMobile, setHistoryMobile] = useState(() => {
-    try { return localStorage.getItem("last_lookup_phone") || ""; } catch { return ""; }
-  });
-  const [savedPhone, setSavedPhone] = useState(() => {
-    try { return localStorage.getItem("last_lookup_phone") || ""; } catch { return ""; }
-  });
+  const [historyMobile, setHistoryMobile] = useState("");
+  const [savedPhone, setSavedPhone] = useState("");
   const [historyState, setHistoryState] = useState({ status: "idle", orders: [] });
   const [expandedOrderIds, setExpandedOrderIds] = useState(new Set());
   const [adminOrders, setAdminOrders] = useState([]);
@@ -248,6 +244,8 @@ export default function App() {
         setAuthError("Sign-in popup was blocked by your browser. Please allow popups for this site and try again.");
       } else if (err.code === "auth/popup-closed-by-user") {
         setAuthError("Sign-in was closed before completion.");
+      } else if (err.code === "auth/unauthorized-domain") {
+        setAuthError("This site is not authorized for Google sign-in. Add the current website domain under Firebase Console → Authentication → Settings → Authorized domains.");
       } else {
         setAuthError(err.message || "Failed to sign in with Google. Please try again.");
       }
@@ -544,7 +542,6 @@ export default function App() {
       setStep("done");
       setCart({});
       try {
-        localStorage.setItem("last_lookup_phone", f.mobile);
         setSavedPhone(f.mobile);
         setHistoryMobile(f.mobile);
       } catch {}
@@ -607,7 +604,6 @@ export default function App() {
     try {
       const orders = await findOrdersByMobile(phone);
       try {
-        localStorage.setItem("last_lookup_phone", phone);
         setSavedPhone(phone);
       } catch {}
       if (orders.length > 0) {

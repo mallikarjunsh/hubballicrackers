@@ -30,7 +30,8 @@ const cfg = {
 };
 
 export const app = getApps().length ? getApp() : initializeApp(cfg);
-export const db = getFirestore(app, cfg.firestoreDatabaseId);
+// Orders live in the project's `(default)` Firestore database.
+export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 // Test connection on boot per skill instructions
@@ -72,8 +73,6 @@ export function isUserAdmin(user) {
   return ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === email);
 }
 
-const memoryOrders = new Map();
-
 // Returns { cats, discount, minOrder } or null (no Firebase config / no products yet).
 export async function loadRates() {
   if (!cfg.projectId) return null;
@@ -111,29 +110,7 @@ export async function loadRates() {
 }
 
 export async function saveOrder(order) {
-  const localId = String(Math.floor(Math.random() * 900000) + 100000);
-  const localRecord = {
-    ...order,
-    status: "pending_confirmation",
-    createdAt: new Date().toISOString(),
-  };
-
-  // Always mirror in local stores for immediate offline resilience
-  memoryOrders.set(localId, localRecord);
-  try {
-    const stored = JSON.parse(localStorage.getItem("mock_orders") || "{}");
-    stored[localId] = localRecord;
-    localStorage.setItem("mock_orders", JSON.stringify(stored));
-  } catch {}
-  try {
-    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
-    history.unshift({ id: localId, ...localRecord });
-    localStorage.setItem("local_order_history", JSON.stringify(history.slice(0, 50)));
-  } catch {}
-
-  if (!cfg.projectId) {
-    return localId;
-  }
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
 
   const record = {
     ...order,
@@ -152,32 +129,15 @@ export async function saveOrder(order) {
         return true;
       });
       if (saved) {
-        // Replace the temporary local-only ID with the real Firestore ID. Keeping
-        // both caused duplicate entries in this browser's order history.
-        const syncedRecord = { ...order, status: "pending_confirmation", createdAt: new Date().toISOString() };
-        memoryOrders.delete(localId);
-        memoryOrders.set(id, syncedRecord);
-        try {
-          const stored = JSON.parse(localStorage.getItem("mock_orders") || "{}");
-          delete stored[localId];
-          stored[id] = syncedRecord;
-          localStorage.setItem("mock_orders", JSON.stringify(stored));
-        } catch {}
-        try {
-          const history = JSON.parse(localStorage.getItem("local_order_history") || "[]")
-            .filter(item => item?.id !== localId && item?.id !== id);
-          history.unshift({ id, ...syncedRecord });
-          localStorage.setItem("local_order_history", JSON.stringify(history.slice(0, 50)));
-        } catch {}
         return id;
       }
     } catch (err) {
-      console.warn("Firestore transaction error, returning local saved id:", err);
-      return localId;
+      console.warn("Firestore transaction error:", err);
+      throw err;
     }
   }
 
-  return localId;
+  throw new Error("Unable to create a unique order ID. Please try again.");
 }
 
 export async function findOrder(orderId) {
@@ -191,24 +151,11 @@ export async function findOrder(orderId) {
         return { id: snapshot.id, ...snapshot.data() };
       }
     } catch (err) {
-      console.warn("Firestore findOrder error, checking local store:", err);
+      console.warn("Firestore findOrder error:", err);
+      throw err;
     }
   }
-
-  let order = memoryOrders.get(id);
-  if (!order) {
-    try {
-      const stored = JSON.parse(localStorage.getItem("mock_orders") || "{}");
-      if (stored[id]) order = stored[id];
-    } catch {}
-  }
-  if (!order) {
-    try {
-      const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
-      order = history.find(o => o.id === id);
-    } catch {}
-  }
-  return order ? { id, ...order } : null;
+  return null;
 }
 
 export async function findOrdersByMobile(rawMobile) {
@@ -225,34 +172,7 @@ export async function findOrdersByMobile(rawMobile) {
   };
   const resultsMap = new Map();
 
-  // 1. Search in-memory store
-  for (const [id, ord] of memoryOrders.entries()) {
-    if (normalizeMobile(ord?.customer?.mobile) === mobile) {
-      resultsMap.set(id, { id, ...ord });
-    }
-  }
-
-  // 2. Search mock_orders in localStorage
-  try {
-    const mockOrders = JSON.parse(localStorage.getItem("mock_orders") || "{}");
-    for (const [id, ord] of Object.entries(mockOrders)) {
-      if (normalizeMobile(ord?.customer?.mobile) === mobile && !resultsMap.has(id)) {
-        resultsMap.set(id, { id, ...ord });
-      }
-    }
-  } catch {}
-
-  // 3. Search local_order_history in localStorage
-  try {
-    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
-    for (const ord of history) {
-      if (normalizeMobile(ord?.customer?.mobile) === mobile && ord?.id && !resultsMap.has(ord.id)) {
-        resultsMap.set(ord.id, ord);
-      }
-    }
-  } catch {}
-
-  // 4. Query Firestore. Try exact matches first, then common historical formats.
+  // Query Firestore. Try exact matches first, then common historical formats.
   // Do not report "no orders" when the database query itself failed.
   let firestoreError = null;
   if (cfg.projectId) {
@@ -315,42 +235,16 @@ export async function findOrdersByMobile(rawMobile) {
 
 export async function loadAllOrders() {
   const resultsMap = new Map();
-
-  // 1. Search in-memory store
-  for (const [id, ord] of memoryOrders.entries()) {
-    resultsMap.set(id, { id, ...ord });
-  }
-
-  // 2. Search mock_orders in localStorage
+  // Query Firestore only. Order management must reflect database state.
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
   try {
-    const mockOrders = JSON.parse(localStorage.getItem("mock_orders") || "{}");
-    for (const [id, ord] of Object.entries(mockOrders)) {
-      if (!resultsMap.has(id)) {
-        resultsMap.set(id, { id, ...ord });
-      }
-    }
-  } catch {}
-
-  // 3. Search local_order_history in localStorage
-  try {
-    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
-    for (const ord of history) {
-      if (ord?.id && !resultsMap.has(ord.id)) {
-        resultsMap.set(ord.id, ord);
-      }
-    }
-  } catch {}
-
-  // 4. Query Firestore if configured
-  if (cfg.projectId) {
-    try {
-      const snapshot = await getDocs(collection(db, "orders"));
-      snapshot.forEach(docSnap => {
-        resultsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-      });
-    } catch (err) {
-      console.warn("Unable to fetch all orders from Firestore:", err);
-    }
+    const snapshot = await getDocs(collection(db, "orders"));
+    snapshot.forEach(docSnap => {
+      resultsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+    });
+  } catch (err) {
+    console.warn("Unable to fetch all orders from Firestore:", err);
+    throw new Error(`Unable to load orders from Firestore (${err.code || "unknown error"}).`);
   }
 
   const list = Array.from(resultsMap.values());
@@ -371,38 +265,7 @@ export async function updateOrder(orderId, updates) {
   const id = String(orderId || "").trim();
   if (!id) throw new Error("Order ID is required.");
 
-  // 1. Update in memoryOrders
-  if (memoryOrders.has(id)) {
-    memoryOrders.set(id, { ...memoryOrders.get(id), ...updates });
-  }
-
-  // 2. Update in mock_orders
-  try {
-    const mockOrders = JSON.parse(localStorage.getItem("mock_orders") || "{}");
-    if (mockOrders[id]) {
-      mockOrders[id] = { ...mockOrders[id], ...updates };
-      localStorage.setItem("mock_orders", JSON.stringify(mockOrders));
-    }
-  } catch {}
-
-  // 3. Update in local_order_history
-  try {
-    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
-    const idx = history.findIndex(o => o.id === id);
-    if (idx !== -1) {
-      history[idx] = { ...history[idx], ...updates };
-      localStorage.setItem("local_order_history", JSON.stringify(history));
-    }
-  } catch {}
-
-  // 4. Update in Firestore if configured
-  if (cfg.projectId) {
-    try {
-      await updateDoc(doc(db, "orders", id), updates);
-    } catch (err) {
-      console.warn("Failed to update order in Firestore:", err);
-    }
-  }
-
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  await updateDoc(doc(db, "orders", id), updates);
   return true;
 }
