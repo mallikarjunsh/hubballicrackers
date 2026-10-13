@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Fireworks product available in catalog",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "unit": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "emoji": { "type": "string" },
+        "net": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "order": { "type": "number" },
+        "offerPrice": { "type": "number" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["name", "unit", "price", "category", "emoji", "net", "active", "order"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order enquiry and tracking",
+      "type": "object",
+      "properties": {
+        "customer": { "type": "object" },
+        "items": { "type": "array" },
+        "net": { "type": "number" },
+        "packing": { "type": "number" },
+        "savings": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "paid": { "type": "boolean" },
+        "paymentStatus": { "type": "string" },
+        "paymentMode": { "type": "string" },
+        "paidAt": { "type": "string" },
+        "deliveryNote": { "type": "string" },
+        "deliveredAt": { "type": "string" },
+        "statusUpdatedAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["customer", "items", "net", "packing", "savings", "total", "status", "createdAt"]
+    },
+    "ShopSettings": {
+      "title": "ShopSettings",
+      "description": "Global shop configuration",
+      "type": "object",
+      "properties": {
+        "discount": { "type": "number" },
+        "minOrder": { "type": "object" }
+      },
+      "required": ["discount", "minOrder"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Store admin authorization",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of crackers and fireworks"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders and enquiries"
+    },
+    "/settings/{settingId}": {
+      "schema": "ShopSettings",
+      "description": "Shop settings and discount rates"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminUser",
+      "description": "Admin access allowlist"
+    }
+  }
+}

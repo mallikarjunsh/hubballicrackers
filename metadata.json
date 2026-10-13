@@ -1,0 +1,8 @@
+{
+  "name": "Hubballi Crackers",
+  "description": "Price list, enquiry, and order tracking for festive fireworks and crackers from Hubballi.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

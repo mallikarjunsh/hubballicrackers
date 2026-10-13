@@ -1,5 +1,17 @@
 import { useState, useMemo, useEffect } from "react";
-import { loadRates, saveOrder, findOrder } from "./firebase";
+import {
+  loadRates,
+  saveOrder,
+  findOrder,
+  findOrdersByMobile,
+  loadAllOrders,
+  updateOrder,
+  signInWithGoogle,
+  logOutAdmin,
+  subscribeToAuth,
+  isUserAdmin,
+  ADMIN_EMAILS
+} from "./firebase";
 import PRODUCT_IMAGE_MANIFEST from "./productImages.json";
 let DISC = 0.2; // 20% off the listed price
 const SHOP = "Hubballi Crackers";
@@ -65,13 +77,47 @@ const FALLBACK_DATA = [
   { id: "rocket", name: "Rockets & Bombs", emoji: "🚀", items: [["Musical Rocket", "1 Box", 1000], ["Two Sound Rocket", "1 Box", 1000], ["Hydro Bomb (10 Pcs)", "1 Box", 450], ["1/2 kg Paper Bomb", "1 Pce", 500], ["Hydro Bomb", "1 Box", 270, "product-images/hydro-bomb.png", 160], ["777 Agni Bomb", "1 Box", 370, "product-images/777-agni-bomb.png", 240], ["Shell Bomb - ARD", "1 Box", 400, null, 340]] },
   { id: "night", name: "Multicolour Night Shots", emoji: "🎆", items: [["12 Shot Multi Color", "1 Box", 450, null, 340], ["15 Shot Multi Color", "1 Box", 550, null, 430], ["30 Shot Multi Color", "1 Box", 770, "product-images/shots-30-multicolour.webp", 650], ["60 Shot Multi Color", "1 Box", 1250, "product-images/shots-60-multicolour.webp", 1050], ["120 Shot Multi Color", "1 Box", 2350, "product-images/shots-120-multicolour.webp", 1840], ["240 Shot Multi Color", "1 Box", 4550, null, 3540]] },
   { id: "single-shots", name: "Single Shots", emoji: "🎆", items: [["Single Shots - 2 inch (3 Pieces) - Narayan", "1 Box", 600, null, 440], ["Single Shots - 3 inch - Supreme", "1 Box", 600, null, 490], ["Single Shots - 4 inch - VB", "1 Box", 700, null, 540]] },
-  { id: "garland", name: "Festival Garlands", emoji: "🎊", items: [["100 Wala", "1 Box", 180], ["1000 Wala", "1 Box", 300, null, 250], ["2000 Wala", "1 Box", 550, null, 460], ["5000 Wala", "1 Box", 1100, null, 900], ["10000 Wala", "1 Box", 2150, null, 1800]] },
+  { id: "garland", name: "Festival Garlands", emoji: "🎊", items: [["1000 Wala", "1 Box", 300, "product-images/kmr-1000-wala.jpg", 250], ["2000 Wala", "1 Box", 550, "product-images/kmr-2000-wala.jpg", 460], ["5000 Wala", "1 Box", 1100, "product-images/kmr-5000-wala.jpg", 900], ["10000 Wala", "1 Box", 2150, "product-images/kmr-10000-wala.jpg", 1800]] },
   { id: "goa", name: "Goa", emoji: "🎆", net: true, items: [["Ashwini", "1 Box", 650], ["Ashwini Box", "1 Box", 700], ["ARD", "1 Box", 850, "product-images/ard.avif"]] },
   { id: "gift", name: "Gift Boxes", emoji: "🧧", items: [["20 Item Gift Box", "1 Box", 1750], ["30 Item Gift Box", "1 Box", 3000], ["50 Item Gift Box", "1 Box", 5500]] },
 ];
 const offer = (cat, p, offerPrice) => (offerPrice ?? (cat.net ? p : Math.round(p * (1 - DISC))));
 const inr = n => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const load = () => { try { return JSON.parse(localStorage.getItem("spp-cart") || "{}"); } catch (e) { return {}; } };
+
+function formatOrderDate(val) {
+  if (!val) return "Recent";
+  try {
+    const date = val?.toDate ? val.toDate() : val?.seconds ? new Date(val.seconds * 1000) : new Date(val);
+    if (isNaN(date.getTime())) return "Recent";
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  } catch {
+    return "Recent";
+  }
+}
+
+function getStatusInfo(status) {
+  switch (status) {
+    case "pending_confirmation":
+      return { label: "Pending Confirmation", className: "order-badge-pending", icon: "⏳" };
+    case "confirmed":
+      return { label: "Confirmed", className: "order-badge-confirmed", icon: "✅" };
+    case "dispatched":
+      return { label: "Dispatched", className: "order-badge-dispatched", icon: "🚚" };
+    case "delivered":
+      return { label: "Delivery Successful", className: "order-badge-delivered", icon: "🎉" };
+    case "cancelled":
+      return { label: "Cancelled", className: "order-badge-cancelled", icon: "❌" };
+    default:
+      return { label: status || "Submitted", className: "order-badge-pending", icon: "📋" };
+  }
+}
 
 function Qty({ v, set }) {
   const [sparkId, setSparkId] = useState(0);
@@ -150,6 +196,284 @@ export default function App() {
   const [orderId, setOrderId] = useState("");
   const [lookupId, setLookupId] = useState("");
   const [lookupState, setLookupState] = useState({ status: "idle" });
+  const [historyMobile, setHistoryMobile] = useState(() => {
+    try { return localStorage.getItem("last_lookup_phone") || ""; } catch { return ""; }
+  });
+  const [savedPhone, setSavedPhone] = useState(() => {
+    try { return localStorage.getItem("last_lookup_phone") || ""; } catch { return ""; }
+  });
+  const [historyState, setHistoryState] = useState({ status: "idle", orders: [] });
+  const [expandedOrderIds, setExpandedOrderIds] = useState(new Set());
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState("");
+  const [adminFilter, setAdminFilter] = useState("all");
+  const [adminSearch, setAdminSearch] = useState("");
+  const [adminSort, setAdminSort] = useState("date_desc");
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [actionToast, setActionToast] = useState(null);
+  const [editingTrackingId, setEditingTrackingId] = useState(null);
+  const [trackingNotes, setTrackingNotes] = useState({});
+  const [paymentModes, setPaymentModes] = useState({});
+  const [adminExpandedIds, setAdminExpandedIds] = useState(new Set());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [authError, setAuthError] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuth(user => {
+      setCurrentUser(user);
+      setAuthChecking(false);
+      if (user && !isUserAdmin(user)) {
+        setAuthError("This Google account does not have administrator privileges. Please sign in with the authorized store owner account.");
+      } else {
+        setAuthError("");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    setSigningIn(true);
+    setAuthError("");
+    try {
+      const userCred = await signInWithGoogle();
+      if (!isUserAdmin(userCred.user)) {
+        setAuthError("This Google account does not have administrator privileges. Please sign in with the authorized store owner account.");
+      }
+    } catch (err) {
+      console.error("Google login error:", err);
+      if (err.code === "auth/popup-blocked") {
+        setAuthError("Sign-in popup was blocked by your browser. Please allow popups for this site and try again.");
+      } else if (err.code === "auth/popup-closed-by-user") {
+        setAuthError("Sign-in was closed before completion.");
+      } else {
+        setAuthError(err.message || "Failed to sign in with Google. Please try again.");
+      }
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    try {
+      await logOutAdmin();
+      setAuthError("");
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
+
+  const loadAdminOrders = async () => {
+    setAdminLoading(true);
+    setAdminError("");
+    try {
+      const list = await loadAllOrders();
+      setAdminOrders(list);
+    } catch (err) {
+      console.error("Admin orders load error:", err);
+      setAdminError(err.message || "Failed to load orders");
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === "#admin") {
+        setStep("admin");
+        window.scrollTo(0, 0);
+      }
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
+  useEffect(() => {
+    if (step === "admin" && currentUser && isUserAdmin(currentUser)) {
+      loadAdminOrders();
+    }
+  }, [step, currentUser]);
+
+  const handleMarkPaid = async (order, forcedStatus) => {
+    const nextPaid = forcedStatus !== undefined ? forcedStatus : !order.paid;
+    setActionLoadingId(order.id);
+    const mode = paymentModes[order.id] || order.paymentMode || "UPI / GPay / PhonePe";
+    const updates = {
+      paid: nextPaid,
+      paymentStatus: nextPaid ? "paid" : "unpaid",
+      paymentMode: nextPaid ? mode : null,
+      paidAt: nextPaid ? new Date().toISOString() : null
+    };
+    try {
+      await updateOrder(order.id, updates);
+      setAdminOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));
+      setActionToast({
+        type: "success",
+        text: nextPaid
+          ? `Order #${order.id} marked as Paid (${mode})!`
+          : `Order #${order.id} marked as Unpaid.`
+      });
+      setTimeout(() => setActionToast(null), 3500);
+    } catch (err) {
+      setActionToast({ type: "error", text: "Failed to update payment: " + err.message });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleMarkDeliverySuccessful = async (order) => {
+    setActionLoadingId(order.id);
+    const updates = {
+      status: "delivered",
+      deliveredAt: new Date().toISOString()
+    };
+    try {
+      await updateOrder(order.id, updates);
+      setAdminOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));
+      setActionToast({
+        type: "success",
+        text: `🎉 Order #${order.id} marked as Delivery Successful!`
+      });
+      setTimeout(() => setActionToast(null), 3500);
+    } catch (err) {
+      setActionToast({ type: "error", text: "Failed to update delivery: " + err.message });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleUpdateStatus = async (order, newStatus, customNote) => {
+    setActionLoadingId(order.id);
+    const note = customNote !== undefined ? customNote : (trackingNotes[order.id] ?? order.deliveryNote ?? "");
+    const updates = {
+      status: newStatus,
+      deliveryNote: note,
+      statusUpdatedAt: new Date().toISOString()
+    };
+    if (newStatus === "delivered") {
+      updates.deliveredAt = new Date().toISOString();
+    }
+    try {
+      await updateOrder(order.id, updates);
+      setAdminOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));
+      setEditingTrackingId(null);
+      setActionToast({
+        type: "success",
+        text: `Order #${order.id} status updated to ${getStatusInfo(newStatus).label}!`
+      });
+      setTimeout(() => setActionToast(null), 3500);
+    } catch (err) {
+      setActionToast({ type: "error", text: "Failed to update status: " + err.message });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const toggleAdminExpand = id => {
+    setAdminExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCreateDemoOrder = async () => {
+    setActionLoadingId("demo");
+    try {
+      const demoOrder = {
+        customer: {
+          name: "Mallikarjun Patil",
+          mobile: "7845601428",
+          email: "",
+          city: "Hubballi",
+          state: "Karnataka",
+          address: "Shop No. 12, Station Road, Hubballi 580020"
+        },
+        items: [
+          { name: "Combo Pack - Starter", unit: "1 Box", quantity: 1, unitPrice: 3000, total: 3000 },
+          { name: "1000 Wala", unit: "1 Box", quantity: 2, unitPrice: 250, total: 500 },
+          { name: "Ground Chakkar Deluxe (10 Pcs)", unit: "1 Box (10 Pcs)", quantity: 2, unitPrice: 180, total: 360 }
+        ],
+        net: 3860,
+        packing: 116,
+        savings: 640,
+        total: 3976,
+        paid: false,
+        status: "pending_confirmation"
+      };
+      const id = await saveOrder(demoOrder);
+      await loadAdminOrders();
+      setActionToast({ type: "success", text: `Demo order #${id} created! You can now test marking it Paid or Delivery Successful.` });
+      setTimeout(() => setActionToast(null), 4000);
+    } catch (err) {
+      setActionToast({ type: "error", text: "Failed to create demo order: " + err.message });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const adminStats = useMemo(() => {
+    const totalOrders = adminOrders.length;
+    const totalRevenue = adminOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const paidList = adminOrders.filter(o => o.paid === true || o.paymentStatus === "paid");
+    const paidOrders = paidList.length;
+    const paidRevenue = paidList.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const unpaidRevenue = totalRevenue - paidRevenue;
+    const pendingOrders = adminOrders.filter(o => !o.status || o.status === "pending_confirmation").length;
+    const confirmedOrders = adminOrders.filter(o => o.status === "confirmed").length;
+    const dispatchedOrders = adminOrders.filter(o => o.status === "dispatched").length;
+    const deliveredOrders = adminOrders.filter(o => o.status === "delivered").length;
+    return {
+      totalOrders,
+      totalRevenue,
+      paidOrders,
+      paidRevenue,
+      unpaidRevenue,
+      pendingOrders,
+      confirmedOrders,
+      dispatchedOrders,
+      deliveredOrders,
+    };
+  }, [adminOrders]);
+
+  const filteredAdminOrders = useMemo(() => {
+    let result = [...adminOrders];
+    if (adminSearch.trim()) {
+      const q = adminSearch.toLowerCase().trim();
+      result = result.filter(o =>
+        (o.id && o.id.toLowerCase().includes(q)) ||
+        (o.customer?.name && o.customer.name.toLowerCase().includes(q)) ||
+        (o.customer?.mobile && o.customer.mobile.includes(q)) ||
+        (o.customer?.city && o.customer.city.toLowerCase().includes(q)) ||
+        (o.customer?.state && o.customer.state.toLowerCase().includes(q)) ||
+        (o.customer?.address && o.customer.address.toLowerCase().includes(q))
+      );
+    }
+    if (adminFilter === "paid") {
+      result = result.filter(o => o.paid === true || o.paymentStatus === "paid");
+    } else if (adminFilter === "unpaid") {
+      result = result.filter(o => !o.paid && o.paymentStatus !== "paid");
+    } else if (adminFilter !== "all") {
+      result = result.filter(o => o.status === adminFilter);
+    }
+    result.sort((a, b) => {
+      const getTs = item => {
+        if (item?.createdAt?.toDate) return item.createdAt.toDate().getTime();
+        if (item?.createdAt?.seconds) return item.createdAt.seconds * 1000;
+        if (typeof item?.createdAt === "string") return new Date(item.createdAt).getTime();
+        return 0;
+      };
+      if (adminSort === "date_asc") return getTs(a) - getTs(b);
+      if (adminSort === "total_desc") return (b.total || 0) - (a.total || 0);
+      if (adminSort === "total_asc") return (a.total || 0) - (b.total || 0);
+      return getTs(b) - getTs(a);
+    });
+    return result;
+  }, [adminOrders, adminSearch, adminFilter, adminSort]);
   useEffect(() => { try { localStorage.setItem("spp-cart", JSON.stringify(cart)); } catch (e) {} }, [cart]);
   useEffect(() => {
     if (!selectedProduct) { setProductImage(null); return; }
@@ -219,6 +543,11 @@ export default function App() {
       setSent(msg(id));
       setStep("done");
       setCart({});
+      try {
+        localStorage.setItem("last_lookup_phone", f.mobile);
+        setSavedPhone(f.mobile);
+        setHistoryMobile(f.mobile);
+      } catch {}
     } catch (error) {
       console.error("Unable to save enquiry to Firebase:", error);
       setSubmitError(error.message === "Firebase is not configured."
@@ -247,6 +576,74 @@ export default function App() {
     setStep("lookup");
     window.scrollTo(0, 0);
   };
+  const toggleOrderExpand = id => {
+    setExpandedOrderIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const searchOrderHistory = async phoneToSearch => {
+    const raw = phoneToSearch !== undefined ? phoneToSearch : historyMobile;
+    const phone = String(raw || "").trim().replace(/\D/g, "");
+    if (!phone) {
+      setHistoryState({
+        status: "error",
+        orders: [],
+        message: "Please enter your 10-digit mobile number."
+      });
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setHistoryState({
+        status: "error",
+        orders: [],
+        message: "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210)."
+      });
+      return;
+    }
+    setHistoryState({ status: "loading", orders: [] });
+    try {
+      const orders = await findOrdersByMobile(phone);
+      try {
+        localStorage.setItem("last_lookup_phone", phone);
+        setSavedPhone(phone);
+      } catch {}
+      if (orders.length > 0) {
+        setHistoryState({ status: "found", orders });
+      } else {
+        setHistoryState({
+          status: "empty",
+          orders: [],
+          searchedPhone: phone,
+          message: `No past orders found for +91 ${phone}. Make sure this matches the number used when submitting your enquiry.`
+        });
+      }
+    } catch (err) {
+      console.error("Order history fetch failed:", err);
+      setHistoryState({
+        status: "error",
+        orders: [],
+        message: err.message || "Failed to load order history. Please try again."
+      });
+    }
+  };
+  const scrollToOrderHistory = prefilledPhone => {
+    if (step !== "list") setStep("list");
+    if (prefilledPhone) {
+      setHistoryMobile(prefilledPhone);
+    }
+    setTimeout(() => {
+      const el = document.getElementById("order-history");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+        if (prefilledPhone) {
+          searchOrderHistory(prefilledPhone);
+        }
+      }
+    }, 80);
+  };
   const showProductImage = (name, unit, price, emoji, imageUrl) => {
     const image = imageUrl === undefined
       ? PRODUCT_IMAGES[name]
@@ -272,7 +669,7 @@ export default function App() {
       <header>
         <img src={LOGO} alt="Hubballi Crackers" style={{ height: 52 }} />
         <div className="brand-wordmark"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></div>
-        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find your order</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a></nav>
+        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><a href="#order-history" onClick={e => { e.preventDefault(); scrollToOrderHistory(); }}>Order History</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a></nav>
       </header>
 
       <div className="wrap" id="top">
@@ -307,6 +704,243 @@ export default function App() {
               </table></div>
             </section>
           ))}
+
+          <section className="order-history-section" id="order-history">
+            <div className="order-history-header">
+              <h2>📜 Order History <small style={{ fontSize: "14px", fontWeight: "normal", color: "var(--mute)" }}>(ನಿಮ್ಮ ಹಿಂದಿನ ಆರ್ಡರ್‌ಗಳು)</small></h2>
+              <p>Enter your 10-digit mobile number to view all your past cracker enquiries, order statuses, and totals.</p>
+            </div>
+
+            <form className="order-history-form" onSubmit={e => { e.preventDefault(); searchOrderHistory(); }}>
+              <div className="order-history-input-wrap">
+                <span className="order-history-prefix">🇮🇳 +91</span>
+                <input
+                  className="order-history-input"
+                  id="order-history-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  value={historyMobile}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setHistoryMobile(val);
+                    if (historyState.status !== "idle") setHistoryState({ status: "idle", orders: [] });
+                  }}
+                  placeholder="Enter 10-digit mobile number"
+                  aria-label="10-digit mobile number for order history"
+                  required
+                />
+              </div>
+              <button className="btn" type="submit" disabled={historyState.status === "loading"}>
+                {historyState.status === "loading" ? "Searching…" : "View Past Orders"}
+              </button>
+              {historyState.status !== "idle" && (
+                <button
+                  className="btn alt"
+                  type="button"
+                  onClick={() => {
+                    setHistoryState({ status: "idle", orders: [] });
+                    setHistoryMobile("");
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </form>
+
+            {savedPhone && savedPhone !== historyMobile && (
+              <div className="order-history-quick-phone">
+                <span>Quick fill:</span>
+                <button
+                  type="button"
+                  className="order-history-quick-btn"
+                  onClick={() => {
+                    setHistoryMobile(savedPhone);
+                    searchOrderHistory(savedPhone);
+                  }}
+                >
+                  📱 Use {savedPhone}
+                </button>
+              </div>
+            )}
+
+            {historyState.status === "loading" && (
+              <div className="empty" role="status">
+                <span>⏳ Looking up past orders for +91 {historyMobile}…</span>
+              </div>
+            )}
+
+            {historyState.status === "error" && (
+              <div className="err" role="alert" style={{ padding: "10px 0" }}>
+                ⚠️ {historyState.message}
+              </div>
+            )}
+
+            {historyState.status === "empty" && (
+              <div className="empty" role="status">
+                <p style={{ margin: "0 0 6px", fontSize: "16px", color: "var(--ink)", fontWeight: "700" }}>
+                  No orders found for +91 {historyState.searchedPhone}
+                </p>
+                <p style={{ margin: 0, fontSize: "13px" }}>
+                  Make sure this matches the 10-digit number entered when placing your enquiry.
+                </p>
+              </div>
+            )}
+
+            {historyState.status === "found" && (
+              <div className="order-history-results">
+                <div className="order-history-stats-banner">
+                  <div>
+                    <span>Found <b>{historyState.orders.length}</b> {historyState.orders.length === 1 ? "enquiry" : "enquiries"} for +91 {historyMobile}</span>
+                  </div>
+                  <div>
+                    <span>Total Value: <b>{inr(historyState.orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0))}</b></span>
+                  </div>
+                </div>
+
+                <div className="order-history-cards-list">
+                  {historyState.orders.map(order => {
+                    const statusInfo = getStatusInfo(order.status);
+                    const isExpanded = expandedOrderIds.has(order.id);
+                    const itemCount = order.items?.reduce((cnt, it) => cnt + (it.quantity || 1), 0) || order.items?.length || 0;
+                    const dateStr = formatOrderDate(order.createdAt);
+
+                    return (
+                      <article className="order-card" key={order.id}>
+                        <div className="order-card-header">
+                          <div className="order-card-id-group">
+                            <span className="order-card-id">Order #{order.id}</span>
+                            <span className="order-card-date">Placed: {dateStr}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                            <span className={`order-badge ${statusInfo.className}`}>
+                              <span>{statusInfo.icon}</span> {statusInfo.label}
+                            </span>
+                            <span className={order.paid ? "admin-badge-paid" : "admin-badge-unpaid"}>
+                              {order.paid ? "💳 Paid" : "⏳ Unpaid"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="order-customer-meta">
+                          <b>Customer:</b> {order.customer?.name} {order.customer?.city ? `· ${order.customer.city}, ${order.customer.state || ""}` : ""}
+                        </div>
+
+                        {order.deliveryNote && (
+                          <div style={{ background: "rgba(23, 96, 71, 0.08)", border: "1px solid var(--line)", padding: "6px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
+                            🚚 <b>Delivery Note / Tracking:</b> {order.deliveryNote}
+                          </div>
+                        )}
+
+                        <div className="order-metrics-grid">
+                          <div className="order-metric-box">
+                            <span className="order-metric-label">Items</span>
+                            <span className="order-metric-value">{itemCount} items</span>
+                          </div>
+                          <div className="order-metric-box">
+                            <span className="order-metric-label">Net Rate</span>
+                            <span className="order-metric-value">{inr(order.net || 0)}</span>
+                          </div>
+                          <div className="order-metric-box">
+                            <span className="order-metric-label">Packing (3%)</span>
+                            <span className="order-metric-value">{inr(order.packing || 0)}</span>
+                          </div>
+                          <div className="order-metric-box">
+                            <span className="order-metric-label">You Saved</span>
+                            <span className="order-metric-value savings">{inr(order.savings || 0)}</span>
+                          </div>
+                          <div className="order-metric-box">
+                            <span className="order-metric-label">Overall Total</span>
+                            <span className="order-metric-value total">{inr(order.total || 0)}</span>
+                          </div>
+                        </div>
+
+                        {Array.isArray(order.items) && order.items.length > 0 && (
+                          <div className="order-items-summary-chips">
+                            {order.items.slice(0, 5).map((it, idx) => (
+                              <span className="order-item-chip" key={idx}>
+                                {it.name} <span>×{it.quantity}</span>
+                              </span>
+                            ))}
+                            {order.items.length > 5 && (
+                              <span className="order-item-chip">
+                                +{order.items.length - 5} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="order-card-actions">
+                          <button
+                            className="btn alt"
+                            type="button"
+                            style={{ padding: "6px 14px", fontSize: "13px", minHeight: "36px" }}
+                            onClick={() => toggleOrderExpand(order.id)}
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? "Hide Details ▲" : "View Details ▼"}
+                          </button>
+                          <a
+                            className="btn alt"
+                            style={{
+                              textDecoration: "none",
+                              padding: "6px 14px",
+                              fontSize: "13px",
+                              minHeight: "36px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                            target="_blank"
+                            rel="noopener"
+                            href={`https://wa.me/91${PHONES[0]}?text=${encodeURIComponent(
+                              `Hello Hubballi Crackers, enquiry update regarding Order ID: #${order.id} (Mobile: ${order.customer?.mobile || historyMobile}, Total: ${inr(order.total || 0)})`
+                            )}`}
+                          >
+                            💬 WhatsApp Store
+                          </a>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="order-details-expanded">
+                            <p style={{ margin: "0 0 8px", fontSize: "13px" }}>
+                              <b>Delivery Address:</b> {order.customer?.address || "Not specified"}, {order.customer?.city}, {order.customer?.state}
+                            </p>
+                            {order.customer?.email && (
+                              <p style={{ margin: "0 0 10px", fontSize: "13px" }}>
+                                <b>Email:</b> {order.customer.email}
+                              </p>
+                            )}
+                            <table className="order-details-table">
+                              <thead>
+                                <tr>
+                                  <th style={{ textAlign: "left" }}>Product</th>
+                                  <th style={{ textAlign: "center" }}>Qty</th>
+                                  <th style={{ textAlign: "right" }}>Price</th>
+                                  <th style={{ textAlign: "right" }}>Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {order.items?.map((item, idx) => (
+                                  <tr key={idx} style={{ borderBottom: "1px solid var(--line)" }}>
+                                    <td>{item.name} <small style={{ color: "var(--mute)" }}>({item.unit})</small></td>
+                                    <td style={{ textAlign: "center" }}>{item.quantity}</td>
+                                    <td style={{ textAlign: "right" }}>{inr(item.unitPrice || 0)}</td>
+                                    <td style={{ textAlign: "right", fontWeight: "700" }}>{inr(item.total || 0)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </section>
         </>}
 
         {step === "lookup" && <section className="order-page">
@@ -321,8 +955,20 @@ export default function App() {
             {lookupState.status === "error" && <p className="err" role="alert">{lookupState.message}</p>}
             {lookupState.status === "found" && <div className="order-details" role="status">
               <h3>Order {lookupState.order.id}</h3>
-              <p><b>Status:</b> {lookupState.order.status === "pending_confirmation" ? "Pending store confirmation" : lookupState.order.status}</p>
-              <p><b>Customer:</b> {lookupState.order.customer.name} · {lookupState.order.customer.mobile}</p>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "10px", flexWrap: "wrap" }}>
+                <span className={`order-badge ${getStatusInfo(lookupState.order.status).className}`}>
+                  {getStatusInfo(lookupState.order.status).icon} {getStatusInfo(lookupState.order.status).label}
+                </span>
+                <span className={lookupState.order.paid ? "admin-badge-paid" : "admin-badge-unpaid"}>
+                  {lookupState.order.paid ? `💳 Paid${lookupState.order.paymentMode ? ` (${lookupState.order.paymentMode})` : ""}` : "⏳ Payment Unpaid"}
+                </span>
+              </div>
+              {lookupState.order.deliveryNote && (
+                <div style={{ background: "rgba(23, 96, 71, 0.08)", border: "1px solid var(--line)", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
+                  🚚 <b>Delivery Note / Tracking:</b> {lookupState.order.deliveryNote}
+                </div>
+              )}
+              <p><b>Customer:</b> {lookupState.order.customer.name} · +91 {lookupState.order.customer.mobile}</p>
               {lookupState.order.customer.email && <p><b>Email:</b> {lookupState.order.customer.email}</p>}
               <p><b>Delivery location:</b> {lookupState.order.customer.city}, {lookupState.order.customer.state} · {lookupState.order.customer.address}</p>
               {lookupState.order.items.map((item, index) => <div className="row" key={index}><span>{item.name} ({item.unit}) × {item.quantity}</span><span>{inr(item.total)}</span></div>)}
@@ -331,7 +977,10 @@ export default function App() {
               <div className="row"><span>You Save</span><span>{inr(lookupState.order.savings)}</span></div>
               <div className="row t"><span>Overall Amount</span><span>{inr(lookupState.order.total)}</span></div>
             </div>}
-            <button className="btn alt order-back" type="button" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>Back to Pricelist</button>
+            <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+              <button className="btn alt order-back" type="button" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>Back to Pricelist</button>
+              <button className="btn alt order-back" type="button" onClick={() => scrollToOrderHistory()}>View All Past Orders by Phone →</button>
+            </div>
           </div>
         </section>}
 
@@ -369,8 +1018,543 @@ export default function App() {
             <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"mailto:" + SHOP_EMAIL + "?subject=" + encodeURIComponent("Enquiry - " + SHOP) + "&body=" + encodeURIComponent(sent)}>✉️ Send by Email</a>
             <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"https://wa.me/91" + PHONES[0] + "?text=" + encodeURIComponent(sent)}>💬 Send on WhatsApp</a>
           </div>
-          <button className="btn alt" onClick={openOrderLookup}>Find your order</button>{" "}
-          <button className="btn alt" onClick={() => { setStep("list"); setTouched(false); }}>Back to Pricelist</button></div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
+            <button className="btn" type="button" onClick={() => scrollToOrderHistory(f.mobile || savedPhone)}>📜 View in Order History</button>
+            <button className="btn alt" type="button" onClick={openOrderLookup}>🔍 Find by 6-digit ID</button>
+            <button className="btn alt" type="button" onClick={() => { setStep("list"); setTouched(false); }}>Back to Pricelist</button>
+          </div></div>}
+
+        {step === "admin" && (
+          <section className="admin-page">
+            {authChecking && (
+              <div className="admin-auth-card" role="status">
+                <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔐</div>
+                <h2>Checking Administrator Access…</h2>
+                <p style={{ color: "var(--mute)" }}>Verifying Google authentication status.</p>
+              </div>
+            )}
+
+            {!authChecking && !currentUser && (
+              <div className="admin-auth-card" role="region" aria-label="Administrator Authentication">
+                <div className="mini-badge" style={{ marginBottom: "12px" }}>🛡️ Restricted Access</div>
+                <div style={{ fontSize: "42px", marginBottom: "8px" }}>🔐</div>
+                <h2>Admin Portal Login</h2>
+                <p style={{ color: "var(--mute)", margin: "0 0 20px", fontSize: "14px", lineHeight: "1.5" }}>
+                  The store administration panel is protected. Please sign in with your authorized Google account to manage orders, mark payments, and track deliveries.
+                </p>
+
+                <div className="admin-auth-form">
+                  <button
+                    type="button"
+                    className="google-auth-btn"
+                    onClick={handleGoogleLogin}
+                    disabled={signingIn}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    </svg>
+                    {signingIn ? "Signing in with Google…" : "Sign in with Google"}
+                  </button>
+
+                  {authError && (
+                    <div className="err" style={{ fontSize: "13px", marginTop: "10px", textAlign: "center" }} role="alert">
+                      ⚠️ {authError}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="btn alt"
+                    style={{ marginTop: "12px", fontSize: "13px" }}
+                    onClick={() => { setStep("list"); window.scrollTo(0, 0); }}
+                  >
+                    ← Back to Storefront
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!authChecking && currentUser && !isUserAdmin(currentUser) && (
+              <div className="admin-auth-card" role="region" aria-label="Access Denied">
+                <div style={{ fontSize: "42px", marginBottom: "8px" }}>🚫</div>
+                <h2>Access Denied</h2>
+                <p style={{ color: "var(--brand)", fontWeight: "700", marginBottom: "8px" }}>
+                  Unauthorized Account
+                </p>
+                <p style={{ color: "var(--mute)", fontSize: "14px", marginBottom: "20px", lineHeight: "1.5" }}>
+                  This Google account does not have administrator privileges for Hubballi Crackers. Admin access is reserved for the authorized store administrator.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="google-auth-btn"
+                    onClick={handleGoogleLogin}
+                    disabled={signingIn}
+                  >
+                    🔄 Switch to Authorized Google Account
+                  </button>
+                  <button
+                    type="button"
+                    className="btn alt"
+                    onClick={handleAdminLogout}
+                  >
+                    🚪 Sign Out
+                  </button>
+                  <button
+                    type="button"
+                    className="btn alt"
+                    style={{ fontSize: "13px" }}
+                    onClick={() => { setStep("list"); window.scrollTo(0, 0); }}
+                  >
+                    ← Back to Storefront
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!authChecking && currentUser && isUserAdmin(currentUser) && (
+              <>
+                <div className="admin-header-row">
+                  <div className="admin-header-titles">
+                    <div className="mini-badge">🛡️ Store Administration</div>
+                    <h1>Order Management &amp; Delivery Tracking</h1>
+                    <p>View all cracker orders, verify customer details, mark payments, and track delivery stages.</p>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                    <div className="admin-user-pill">
+                      {currentUser.photoURL && (
+                        <img src={currentUser.photoURL} alt="" className="admin-user-avatar" />
+                      )}
+                      <span><b>Admin:</b> {currentUser.displayName || "Store Owner"}</span>
+                    </div>
+                    <button
+                      className="btn alt"
+                      type="button"
+                      onClick={handleAdminLogout}
+                      title="Sign out of Admin Portal"
+                    >
+                      🚪 Sign Out
+                    </button>
+                    <button
+                      className="btn alt"
+                      type="button"
+                      onClick={() => { setStep("list"); window.scrollTo(0, 0); }}
+                    >
+                      🛒 Store
+                    </button>
+                    <button
+                      className="btn"
+                      type="button"
+                      onClick={loadAdminOrders}
+                      disabled={adminLoading}
+                    >
+                      {adminLoading ? "Refreshing…" : "🔄 Refresh Orders"}
+                    </button>
+                    {adminOrders.length === 0 && !adminLoading && (
+                      <button
+                        className="btn alt"
+                        type="button"
+                        onClick={handleCreateDemoOrder}
+                        disabled={actionLoadingId === "demo"}
+                      >
+                        {actionLoadingId === "demo" ? "Creating…" : "➕ Create Demo Order"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+            {actionToast && (
+              <div className={`admin-toast ${actionToast.type}`} role="status">
+                <span>{actionToast.type === "success" ? "✅" : "⚠️"} {actionToast.text}</span>
+                <button
+                  type="button"
+                  style={{ background: "none", border: 0, font: "inherit", cursor: "pointer", fontWeight: "bold" }}
+                  onClick={() => setActionToast(null)}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            <div className="admin-stats-grid">
+              <div className="admin-stat-card">
+                <div className="admin-stat-label">Total Orders</div>
+                <div className="admin-stat-val">{adminStats.totalOrders}</div>
+                <div className="admin-stat-sub">Revenue: <b>{inr(adminStats.totalRevenue)}</b></div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-label">Paid Orders</div>
+                <div className="admin-stat-val" style={{ color: "var(--ok)" }}>{adminStats.paidOrders}</div>
+                <div className="admin-stat-sub">Collected: <b>{inr(adminStats.paidRevenue)}</b></div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-label">Pending Payment</div>
+                <div className="admin-stat-val" style={{ color: "var(--brand)" }}>{adminStats.totalOrders - adminStats.paidOrders}</div>
+                <div className="admin-stat-sub">Unpaid: <b>{inr(adminStats.unpaidRevenue)}</b></div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-label">Delivery Pipeline</div>
+                <div className="admin-stat-val" style={{ fontSize: "15px", marginTop: "4px" }}>
+                  <span>⏳ {adminStats.pendingOrders}</span> · <span>✅ {adminStats.confirmedOrders}</span> · <span>🚚 {adminStats.dispatchedOrders}</span> · <span>🎉 {adminStats.deliveredOrders}</span>
+                </div>
+                <div className="admin-stat-sub">
+                  {adminStats.deliveredOrders} of {adminStats.totalOrders} delivered
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-filters-bar">
+              <input
+                placeholder="🔍 Search orders by ID, name, phone, city, address…"
+                value={adminSearch}
+                onChange={e => setAdminSearch(e.target.value)}
+              />
+              <select value={adminFilter} onChange={e => setAdminFilter(e.target.value)}>
+                <option value="all">All Orders ({adminOrders.length})</option>
+                <option value="pending_confirmation">⏳ Pending Confirmation ({adminStats.pendingOrders})</option>
+                <option value="confirmed">✅ Confirmed ({adminStats.confirmedOrders})</option>
+                <option value="dispatched">🚚 Dispatched ({adminStats.dispatchedOrders})</option>
+                <option value="delivered">🎉 Delivered / Successful ({adminStats.deliveredOrders})</option>
+                <option value="paid">💳 Paid ({adminStats.paidOrders})</option>
+                <option value="unpaid">⚠️ Unpaid ({adminStats.totalOrders - adminStats.paidOrders})</option>
+              </select>
+              <select value={adminSort} onChange={e => setAdminSort(e.target.value)}>
+                <option value="date_desc">Newest First</option>
+                <option value="date_asc">Oldest First</option>
+                <option value="total_desc">Total: High to Low</option>
+                <option value="total_asc">Total: Low to High</option>
+              </select>
+            </div>
+
+            {adminLoading && (
+              <div className="empty" role="status">
+                <span>⏳ Loading all orders from store database…</span>
+              </div>
+            )}
+
+            {adminError && (
+              <div className="err" role="alert" style={{ marginBottom: "20px" }}>
+                ⚠️ {adminError}
+              </div>
+            )}
+
+            {!adminLoading && filteredAdminOrders.length === 0 && (
+              <div className="empty" role="status">
+                <p style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: "700", color: "var(--ink)" }}>
+                  {adminOrders.length === 0 ? "No orders found in the database yet." : "No orders match your filter criteria."}
+                </p>
+                <p style={{ margin: "0 0 16px", fontSize: "13px" }}>
+                  {adminOrders.length === 0
+                    ? "Orders submitted through the storefront will appear here automatically."
+                    : "Try clearing your search query or switching the status filter."}
+                </p>
+                {adminOrders.length === 0 ? (
+                  <button className="btn" type="button" onClick={handleCreateDemoOrder}>
+                    ➕ Create Sample Demo Order to Test
+                  </button>
+                ) : (
+                  <button className="btn alt" type="button" onClick={() => { setAdminSearch(""); setAdminFilter("all"); }}>
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!adminLoading && filteredAdminOrders.length > 0 && (
+              <div className="admin-orders-list">
+                {filteredAdminOrders.map(order => {
+                  const statusInfo = getStatusInfo(order.status);
+                  const isExpanded = adminExpandedIds.has(order.id);
+                  const isDelivered = order.status === "delivered";
+                  const isPaid = order.paid === true || order.paymentStatus === "paid";
+                  const dateStr = formatOrderDate(order.createdAt);
+                  const isActionLoading = actionLoadingId === order.id;
+                  const currentMode = paymentModes[order.id] || order.paymentMode || "UPI / GPay / PhonePe";
+                  const isEditingTracking = editingTrackingId === order.id;
+
+                  const stages = [
+                    { id: "pending_confirmation", label: "Pending", icon: "⏳" },
+                    { id: "confirmed", label: "Confirmed", icon: "✅" },
+                    { id: "dispatched", label: "Dispatched", icon: "🚚" },
+                    { id: "delivered", label: "Delivered", icon: "🎉" }
+                  ];
+
+                  const getStageIndex = (st) => {
+                    if (st === "confirmed") return 1;
+                    if (st === "dispatched") return 2;
+                    if (st === "delivered") return 3;
+                    return 0;
+                  };
+
+                  const currentStageIdx = getStageIndex(order.status);
+
+                  return (
+                    <article className="admin-order-card" key={order.id}>
+                      <div className="admin-card-header">
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: "18px", fontWeight: "900", color: "var(--leaf-dark)", letterSpacing: "0.5px" }}>
+                              Order #{order.id}
+                            </span>
+                            <span style={{ fontSize: "12px", color: "var(--mute)" }}>
+                              Placed: {dateStr}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="admin-badges-wrap">
+                          <span className={isPaid ? "admin-badge-paid" : "admin-badge-unpaid"}>
+                            {isPaid ? `💳 Paid${order.paymentMode ? ` (${order.paymentMode})` : ""}` : "⏳ Payment Unpaid"}
+                          </span>
+                          <span className={`order-badge ${statusInfo.className}`}>
+                            <span>{statusInfo.icon}</span> {statusInfo.label}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Delivery Stepper Tracker */}
+                      <div className="admin-stepper">
+                        <span style={{ fontWeight: "700", color: "var(--mute)", marginRight: "4px" }}>Delivery Stage:</span>
+                        {stages.map((st, idx) => {
+                          const isActive = idx <= currentStageIdx && order.status !== "cancelled";
+                          return (
+                            <span key={st.id} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                              <button
+                                type="button"
+                                className={`admin-step-pill ${isActive ? "active" : ""}`}
+                                onClick={() => handleUpdateStatus(order, st.id)}
+                                title={`Set status to ${st.label}`}
+                                disabled={isActionLoading}
+                              >
+                                {st.icon} {st.label}
+                              </button>
+                              {idx < stages.length - 1 && <span className="admin-step-arrow">→</span>}
+                            </span>
+                          );
+                        })}
+                        {order.status === "cancelled" && (
+                          <span className="order-badge order-badge-cancelled" style={{ marginLeft: "4px" }}>
+                            ❌ Cancelled
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="admin-order-grid-info">
+                        <div className="admin-customer-box">
+                          <div className="admin-box-title">👤 Customer Details</div>
+                          <div><b>Name:</b> {order.customer?.name}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px", flexWrap: "wrap" }}>
+                            <span><b>Phone:</b> +91 {order.customer?.mobile}</span>
+                            <a
+                              href={`tel:+91${order.customer?.mobile}`}
+                              style={{ textDecoration: "none", color: "var(--leaf-dark)", fontWeight: "700", fontSize: "12px" }}
+                            >
+                              📞 Call
+                            </a>
+                            <a
+                              href={`https://wa.me/91${order.customer?.mobile}?text=${encodeURIComponent(
+                                `Hello ${order.customer?.name || "Customer"}, this is Hubballi Crackers regarding your Order #${order.id}. Total Amount: ${inr(order.total || 0)}. Payment Status: ${isPaid ? "PAID" : "UNPAID"}. Delivery Status: ${statusInfo.label}.`
+                              )}`}
+                              target="_blank"
+                              rel="noopener"
+                              style={{ textDecoration: "none", color: "var(--ok)", fontWeight: "700", fontSize: "12px" }}
+                            >
+                              💬 WhatsApp
+                            </a>
+                          </div>
+                          {order.customer?.email && <div><b>Email:</b> {order.customer.email}</div>}
+                        </div>
+
+                        <div className="admin-shipping-box">
+                          <div className="admin-box-title">📍 Delivery &amp; Shipping</div>
+                          <div><b>Location:</b> {order.customer?.city}, {order.customer?.state}</div>
+                          <div><b>Address:</b> {order.customer?.address}</div>
+                          {order.deliveryNote && (
+                            <div style={{ marginTop: "6px", background: "rgba(23, 96, 71, 0.08)", padding: "4px 8px", borderRadius: "6px" }}>
+                              🚚 <b>Tracking Note:</b> {order.deliveryNote}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="admin-shipping-box">
+                          <div className="admin-box-title">💰 Financials &amp; Items</div>
+                          <div><b>Items Count:</b> {order.items?.length || 0} cracker products</div>
+                          <div><b>Net Rate:</b> {inr(order.net || 0)} · <b>Packing (3%):</b> {inr(order.packing || 0)}</div>
+                          <div><b>Discount Saved:</b> <span style={{ color: "var(--ok)", fontWeight: "700" }}>{inr(order.savings || 0)}</span></div>
+                          <div style={{ fontSize: "15px", marginTop: "4px" }}><b>Overall Total:</b> <span style={{ color: "var(--brand)", fontWeight: "900" }}>{inr(order.total || 0)}</span></div>
+                        </div>
+                      </div>
+
+                      {/* Primary Action Controls */}
+                      <div className="admin-actions-bar">
+                        <div className="admin-action-buttons">
+                          {/* Payment Toggle */}
+                          {isPaid ? (
+                            <button
+                              className="btn alt"
+                              type="button"
+                              onClick={() => handleMarkPaid(order, false)}
+                              disabled={isActionLoading}
+                            >
+                              {isActionLoading ? "Saving…" : "↩️ Mark as Unpaid"}
+                            </button>
+                          ) : (
+                            <div style={{ display: "inline-flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                              <select
+                                style={{ width: "auto", padding: "6px 10px", fontSize: "12px", height: "36px" }}
+                                value={currentMode}
+                                onChange={e => setPaymentModes({ ...paymentModes, [order.id]: e.target.value })}
+                              >
+                                <option value="UPI / GPay / PhonePe">UPI (GPay/PhonePe)</option>
+                                <option value="Cash on Delivery">Cash on Delivery</option>
+                                <option value="Bank Transfer (NEFT/IMPS)">Bank Transfer</option>
+                                <option value="Card">Card</option>
+                              </select>
+                              <button
+                                className="btn"
+                                type="button"
+                                style={{ background: "var(--ok)", borderColor: "var(--ok)", padding: "6px 14px", height: "36px" }}
+                                onClick={() => handleMarkPaid(order, true)}
+                                disabled={isActionLoading}
+                              >
+                                {isActionLoading ? "Saving…" : "💳 Mark as Paid"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Delivery Successful Action */}
+                          <button
+                            className="btn"
+                            type="button"
+                            style={{
+                              background: isDelivered ? "#2e7d32" : "#1b5e20",
+                              borderColor: "#1b5e20",
+                              padding: "6px 14px",
+                              height: "36px"
+                            }}
+                            onClick={() => handleMarkDeliverySuccessful(order)}
+                            disabled={isActionLoading || isDelivered}
+                          >
+                            {isDelivered ? "✅ Delivery Successful" : "🎉 Mark Delivery Successful"}
+                          </button>
+
+                          {/* Status Dropdown Selector */}
+                          <select
+                            style={{ width: "auto", padding: "6px 10px", fontSize: "12px", height: "36px" }}
+                            value={order.status || "pending_confirmation"}
+                            onChange={e => handleUpdateStatus(order, e.target.value)}
+                            disabled={isActionLoading}
+                          >
+                            <option value="pending_confirmation">⏳ Set: Pending Confirmation</option>
+                            <option value="confirmed">✅ Set: Confirmed</option>
+                            <option value="dispatched">🚚 Set: Dispatched</option>
+                            <option value="delivered">🎉 Set: Delivery Successful</option>
+                            <option value="cancelled">❌ Set: Cancelled</option>
+                          </select>
+
+                          {/* Tracking note toggle */}
+                          <button
+                            className="btn alt"
+                            type="button"
+                            style={{ padding: "6px 12px", height: "36px", fontSize: "12px" }}
+                            onClick={() => {
+                              setEditingTrackingId(isEditingTracking ? null : order.id);
+                              if (!trackingNotes[order.id]) {
+                                setTrackingNotes({ ...trackingNotes, [order.id]: order.deliveryNote || "" });
+                              }
+                            }}
+                          >
+                            {order.deliveryNote ? "✏️ Edit Tracking" : "📝 Add Tracking"}
+                          </button>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <button
+                            className="btn alt"
+                            type="button"
+                            style={{ padding: "6px 12px", height: "36px", fontSize: "12px" }}
+                            onClick={() => toggleAdminExpand(order.id)}
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? "Hide Products ▲" : "View Products ▼"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tracking / Delivery Note Editor */}
+                      {isEditingTracking && (
+                        <div className="admin-tracking-editor">
+                          <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "6px" }}>
+                            🚚 Update Delivery Tracking &amp; Courier Note for Order #{order.id}:
+                          </div>
+                          <div className="admin-tracking-editor-grid">
+                            <input
+                              placeholder="e.g. Dispatched via VRL Logistics, LR #581902, Contact: 9845012345"
+                              value={trackingNotes[order.id] !== undefined ? trackingNotes[order.id] : (order.deliveryNote || "")}
+                              onChange={e => setTrackingNotes({ ...trackingNotes, [order.id]: e.target.value })}
+                            />
+                            <div style={{ display: "flex", gap: "6px" }}>
+                              <button
+                                className="btn"
+                                type="button"
+                                style={{ padding: "8px 14px", fontSize: "12px" }}
+                                onClick={() => handleUpdateStatus(order, order.status || "dispatched", trackingNotes[order.id])}
+                                disabled={isActionLoading}
+                              >
+                                Save Tracking
+                              </button>
+                              <button
+                                className="btn alt"
+                                type="button"
+                                style={{ padding: "8px 14px", fontSize: "12px" }}
+                                onClick={() => setEditingTrackingId(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Expandable Order Items Breakdown */}
+                      {isExpanded && (
+                        <div className="order-details-expanded">
+                          <table className="order-details-table">
+                            <thead>
+                              <tr>
+                                <th style={{ textAlign: "left" }}>Cracker Product</th>
+                                <th style={{ textAlign: "center" }}>Unit</th>
+                                <th style={{ textAlign: "center" }}>Qty</th>
+                                <th style={{ textAlign: "right" }}>Unit Price</th>
+                                <th style={{ textAlign: "right" }}>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {order.items?.map((item, idx) => (
+                                <tr key={idx} style={{ borderBottom: "1px solid var(--line)" }}>
+                                  <td>{item.name}</td>
+                                  <td style={{ textAlign: "center", color: "var(--mute)" }}>{item.unit}</td>
+                                  <td style={{ textAlign: "center", fontWeight: "700" }}>{item.quantity}</td>
+                                  <td style={{ textAlign: "right" }}>{inr(item.unitPrice || 0)}</td>
+                                  <td style={{ textAlign: "right", fontWeight: "700" }}>{inr(item.total || 0)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+              </>
+            )}
+          </section>
+        )}
 
         <div className="panel tips" id="safety">
           <h3 style={{ marginTop: 0 }}>🧯 Safety Tips</h3>

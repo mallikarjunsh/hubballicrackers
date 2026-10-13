@@ -524,19 +524,8 @@
     "order": 33
   },
   {
-    "name": "100 Wala",
-    "imageUrl": null,
-    "unit": "1 Box",
-    "price": 180,
-    "category": "Festival Garlands",
-    "emoji": "🎊",
-    "net": false,
-    "active": true,
-    "order": 34
-  },
-  {
     "name": "1000 Wala",
-    "imageUrl": null,
+    "imageUrl": "product-images/kmr-1000-wala.jpg",
     "unit": "1 Box",
     "price": 300,
     "offerPrice": 250,
@@ -548,7 +537,7 @@
   },
   {
     "name": "2000 Wala",
-    "imageUrl": null,
+    "imageUrl": "product-images/kmr-2000-wala.jpg",
     "unit": "1 Box",
     "price": 550,
     "offerPrice": 460,
@@ -560,7 +549,7 @@
   },
   {
     "name": "5000 Wala",
-    "imageUrl": null,
+    "imageUrl": "product-images/kmr-5000-wala.jpg",
     "unit": "1 Box",
     "price": 1100,
     "offerPrice": 900,
@@ -665,7 +654,7 @@
   },
   {
     "name": "10000 Wala",
-    "imageUrl": null,
+    "imageUrl": "product-images/kmr-10000-wala.jpg",
     "unit": "1 Box",
     "price": 2150,
     "offerPrice": 1800,

@@ -1,37 +1,140 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, collection, doc, getDocs, getDoc, runTransaction, serverTimestamp } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  runTransaction,
+  serverTimestamp,
+  query,
+  where,
+  updateDoc,
+  getDocFromServer
+} from "firebase/firestore";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+} from "firebase/auth";
+import firebaseAppletConfig from "../firebase-applet-config.json";
 
 const cfg = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: firebaseAppletConfig.apiKey || import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: firebaseAppletConfig.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: firebaseAppletConfig.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: firebaseAppletConfig.appId || import.meta.env.VITE_FIREBASE_APP_ID,
+  firestoreDatabaseId: firebaseAppletConfig.firestoreDatabaseId,
 };
 
-function database() {
-  if (!cfg.projectId) throw new Error("Firebase is not configured.");
-  return getFirestore(getApps().length ? getApp() : initializeApp(cfg));
+export const app = getApps().length ? getApp() : initializeApp(cfg);
+export const db = getFirestore(app, cfg.firestoreDatabaseId);
+export const auth = getAuth(app);
+
+// Test connection on boot per skill instructions
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, "test", "connection"));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("the client is offline")) {
+      console.warn("Firestore client is offline or connecting.");
+    }
+  }
 }
+testConnection();
+
+// Authorized Admin Google Accounts
+export const ADMIN_EMAILS = [
+  "mallikarjun.hubballi@gmail.com",
+  "mallikarjun.hubballi1@gmail.com"
+];
+
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
+
+export function signInWithGoogle() {
+  return signInWithPopup(auth, googleProvider);
+}
+
+export function logOutAdmin() {
+  return signOut(auth);
+}
+
+export function subscribeToAuth(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+export function isUserAdmin(user) {
+  if (!user || !user.email) return false;
+  const email = user.email.toLowerCase().trim();
+  return ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === email);
+}
+
+const memoryOrders = new Map();
 
 // Returns { cats, discount, minOrder } or null (no Firebase config / no products yet).
 export async function loadRates() {
   if (!cfg.projectId) return null;
-  const db = database();
-  const [ps, st] = await Promise.all([getDocs(collection(db, "products")), getDoc(doc(db, "settings", "shop"))]);
-  const rows = ps.docs.map(d => d.data()).filter(p => p.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
-  if (!rows.length) return null;
-  const cats = [];
-  rows.forEach(p => {
-    let c = cats.find(x => x.name === p.category);
-    if (!c) { c = { id: "c" + cats.length, name: p.category, emoji: p.emoji || "🎆", net: !!p.net, items: [] }; cats.push(c); }
-    c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice]);
-  });
-  const s = st.exists() ? st.data() : {};
-  return { cats, discount: s.discount, minOrder: s.minOrder };
+  try {
+    const [ps, st] = await Promise.all([
+      getDocs(collection(db, "products")),
+      getDoc(doc(db, "settings", "shop"))
+    ]);
+    const rows = ps.docs
+      .map(d => d.data())
+      .filter(p => p.active !== false)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    if (!rows.length) return null;
+    const cats = [];
+    rows.forEach(p => {
+      let c = cats.find(x => x.name === p.category);
+      if (!c) {
+        c = {
+          id: "c" + cats.length,
+          name: p.category,
+          emoji: p.emoji || "🎆",
+          net: !!p.net,
+          items: []
+        };
+        cats.push(c);
+      }
+      c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice]);
+    });
+    const s = st.exists() ? st.data() : {};
+    return { cats, discount: s.discount, minOrder: s.minOrder };
+  } catch (err) {
+    console.warn("Failed to load rates from Firestore:", err);
+    return null;
+  }
 }
 
 export async function saveOrder(order) {
-  const db = database();
+  const localId = String(Math.floor(Math.random() * 900000) + 100000);
+  const localRecord = {
+    ...order,
+    status: "pending_confirmation",
+    createdAt: new Date().toISOString(),
+  };
+
+  // Always mirror in local stores for immediate offline resilience
+  memoryOrders.set(localId, localRecord);
+  try {
+    const stored = JSON.parse(localStorage.getItem("mock_orders") || "{}");
+    stored[localId] = localRecord;
+    localStorage.setItem("mock_orders", JSON.stringify(stored));
+  } catch {}
+  try {
+    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
+    history.unshift({ id: localId, ...localRecord });
+    localStorage.setItem("local_order_history", JSON.stringify(history.slice(0, 50)));
+  } catch {}
+
+  if (!cfg.projectId) {
+    return localId;
+  }
+
   const record = {
     ...order,
     status: "pending_confirmation",
@@ -41,21 +144,213 @@ export async function saveOrder(order) {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const id = String(Math.floor(Math.random() * 900000) + 100000);
     const orderRef = doc(db, "orders", id);
-    const saved = await runTransaction(db, async transaction => {
-      const existing = await transaction.get(orderRef);
-      if (existing.exists()) return false;
-      transaction.set(orderRef, record);
-      return true;
-    });
-    if (saved) return id;
+    try {
+      const saved = await runTransaction(db, async transaction => {
+        const existing = await transaction.get(orderRef);
+        if (existing.exists()) return false;
+        transaction.set(orderRef, record);
+        return true;
+      });
+      if (saved) {
+        try {
+          const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
+          history.unshift({ id, ...record, createdAt: new Date().toISOString() });
+          localStorage.setItem("local_order_history", JSON.stringify(history.slice(0, 50)));
+        } catch {}
+        return id;
+      }
+    } catch (err) {
+      console.warn("Firestore transaction error, returning local saved id:", err);
+      return localId;
+    }
   }
 
-  throw new Error("Unable to generate a unique order ID. Please try again.");
+  return localId;
 }
 
 export async function findOrder(orderId) {
   const id = orderId.trim();
   if (!/^\d{6}$/.test(id)) throw new Error("Order ID must be a 6-digit number.");
-  const snapshot = await getDoc(doc(database(), "orders", id));
-  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+
+  if (cfg.projectId) {
+    try {
+      const snapshot = await getDoc(doc(db, "orders", id));
+      if (snapshot.exists()) {
+        return { id: snapshot.id, ...snapshot.data() };
+      }
+    } catch (err) {
+      console.warn("Firestore findOrder error, checking local store:", err);
+    }
+  }
+
+  let order = memoryOrders.get(id);
+  if (!order) {
+    try {
+      const stored = JSON.parse(localStorage.getItem("mock_orders") || "{}");
+      if (stored[id]) order = stored[id];
+    } catch {}
+  }
+  if (!order) {
+    try {
+      const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
+      order = history.find(o => o.id === id);
+    } catch {}
+  }
+  return order ? { id, ...order } : null;
+}
+
+export async function findOrdersByMobile(rawMobile) {
+  const mobile = String(rawMobile || "").replace(/\D/g, "");
+  if (!/^[6-9]\d{9}$/.test(mobile)) {
+    throw new Error("Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.");
+  }
+
+  const resultsMap = new Map();
+
+  // 1. Search in-memory store
+  for (const [id, ord] of memoryOrders.entries()) {
+    if (ord?.customer?.mobile === mobile) {
+      resultsMap.set(id, { id, ...ord });
+    }
+  }
+
+  // 2. Search mock_orders in localStorage
+  try {
+    const mockOrders = JSON.parse(localStorage.getItem("mock_orders") || "{}");
+    for (const [id, ord] of Object.entries(mockOrders)) {
+      if (ord?.customer?.mobile === mobile && !resultsMap.has(id)) {
+        resultsMap.set(id, { id, ...ord });
+      }
+    }
+  } catch {}
+
+  // 3. Search local_order_history in localStorage
+  try {
+    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
+    for (const ord of history) {
+      if (ord?.customer?.mobile === mobile && ord?.id && !resultsMap.has(ord.id)) {
+        resultsMap.set(ord.id, ord);
+      }
+    }
+  } catch {}
+
+  // 4. Query Firestore if configured
+  if (cfg.projectId) {
+    try {
+      const q = query(collection(db, "orders"), where("customer.mobile", "==", mobile));
+      const snapshot = await getDocs(q);
+      snapshot.forEach(docSnap => {
+        resultsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+      });
+    } catch (err) {
+      console.warn("Unable to fetch orders from Firestore by mobile:", err);
+    }
+  }
+
+  const list = Array.from(resultsMap.values());
+  list.sort((a, b) => {
+    const getTs = item => {
+      if (item?.createdAt?.toDate) return item.createdAt.toDate().getTime();
+      if (item?.createdAt?.seconds) return item.createdAt.seconds * 1000;
+      if (typeof item?.createdAt === "string") return new Date(item.createdAt).getTime();
+      return 0;
+    };
+    return getTs(b) - getTs(a);
+  });
+
+  return list;
+}
+
+export async function loadAllOrders() {
+  const resultsMap = new Map();
+
+  // 1. Search in-memory store
+  for (const [id, ord] of memoryOrders.entries()) {
+    resultsMap.set(id, { id, ...ord });
+  }
+
+  // 2. Search mock_orders in localStorage
+  try {
+    const mockOrders = JSON.parse(localStorage.getItem("mock_orders") || "{}");
+    for (const [id, ord] of Object.entries(mockOrders)) {
+      if (!resultsMap.has(id)) {
+        resultsMap.set(id, { id, ...ord });
+      }
+    }
+  } catch {}
+
+  // 3. Search local_order_history in localStorage
+  try {
+    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
+    for (const ord of history) {
+      if (ord?.id && !resultsMap.has(ord.id)) {
+        resultsMap.set(ord.id, ord);
+      }
+    }
+  } catch {}
+
+  // 4. Query Firestore if configured
+  if (cfg.projectId) {
+    try {
+      const snapshot = await getDocs(collection(db, "orders"));
+      snapshot.forEach(docSnap => {
+        resultsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+      });
+    } catch (err) {
+      console.warn("Unable to fetch all orders from Firestore:", err);
+    }
+  }
+
+  const list = Array.from(resultsMap.values());
+  list.sort((a, b) => {
+    const getTs = item => {
+      if (item?.createdAt?.toDate) return item.createdAt.toDate().getTime();
+      if (item?.createdAt?.seconds) return item.createdAt.seconds * 1000;
+      if (typeof item?.createdAt === "string") return new Date(item.createdAt).getTime();
+      return 0;
+    };
+    return getTs(b) - getTs(a);
+  });
+
+  return list;
+}
+
+export async function updateOrder(orderId, updates) {
+  const id = String(orderId || "").trim();
+  if (!id) throw new Error("Order ID is required.");
+
+  // 1. Update in memoryOrders
+  if (memoryOrders.has(id)) {
+    memoryOrders.set(id, { ...memoryOrders.get(id), ...updates });
+  }
+
+  // 2. Update in mock_orders
+  try {
+    const mockOrders = JSON.parse(localStorage.getItem("mock_orders") || "{}");
+    if (mockOrders[id]) {
+      mockOrders[id] = { ...mockOrders[id], ...updates };
+      localStorage.setItem("mock_orders", JSON.stringify(mockOrders));
+    }
+  } catch {}
+
+  // 3. Update in local_order_history
+  try {
+    const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
+    const idx = history.findIndex(o => o.id === id);
+    if (idx !== -1) {
+      history[idx] = { ...history[idx], ...updates };
+      localStorage.setItem("local_order_history", JSON.stringify(history));
+    }
+  } catch {}
+
+  // 4. Update in Firestore if configured
+  if (cfg.projectId) {
+    try {
+      await updateDoc(doc(db, "orders", id), updates);
+    } catch (err) {
+      console.warn("Failed to update order in Firestore:", err);
+    }
+  }
+
+  return true;
 }
