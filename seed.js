@@ -102,6 +102,7 @@ const legacyProductNames = new Map([
   ["1000-wala-short", "1000 Wala (Short)"],
   ["2000-wala-premium", "2000 Wala (Premium)"],
   ["5000-wala-premium", "5000 Wala (Premium)"],
+  ["100-wala", "100 Wala"],
 ]);
 const unrelatedProducts = existing.docs.filter(product => {
   const name = product.data().name;
@@ -112,7 +113,7 @@ const unrelatedProducts = existing.docs.filter(product => {
 });
 
 if (unrelatedProducts.length) {
-  throw new Error(`Found ${unrelatedProducts.length} non-sample product records; refusing to mix sample data with the existing catalog.`);
+  throw new Error(`Found ${unrelatedProducts.length} non-sample product records (${unrelatedProducts.map(product => `${product.id}: ${product.data().name}`).join(", ")}); refusing to mix sample data with the existing catalog.`);
 }
 
 const expectedIds = new Set(expectedProducts.keys());

@@ -28,13 +28,25 @@ const PRODUCT_IMAGES = Object.fromEntries(Object.entries(PRODUCT_IMAGE_MANIFEST)
   name,
   new URL(`${ASSET_BASE}product-images/${image.file}`, window.location.href).href
 ]));
-const PRODUCT_IMAGE_CACHE = "hubballi-crackers-product-images-v1";
+const LOCAL_PRODUCT_IMAGES = {
+  "15 Shot Multi Color": "product-images/15-shot-multicolour.jpg",
+  "F.P. Asoka (10 Pcs)": "product-images/flower-pots-asoka.jpg",
+  "Ashwini Box": "product-images/goa-ashwini-box.jpg",
+  "Rainbow Spinner Special (Sunshine)": "product-images/RainbowSpinnerSpecial.jpg",
+  "Rainbow Spinner Deluxe (Sunshine)": "product-images/Rainbow Spinner Deluxe (Sunshine).jpg",
+  "Sun Drop": "product-images/sundrop.jpg",
+  "Moon Drop": "product-images/moondrop.jpg",
+};
+// Force product photos to be revalidated on every page load. The timestamp is
+// stable for this page session, so React re-renders do not trigger extra loads.
+const PRODUCT_IMAGE_REVISION = Date.now().toString();
 const pendingProductImages = new Map();
 const getCachedProductImage = source => {
   let pending = pendingProductImages.get(source);
   if (!pending) {
     pending = (async () => {
       const imageUrl = new URL(source, window.location.href);
+      imageUrl.searchParams.set("v", PRODUCT_IMAGE_REVISION);
       if (imageUrl.origin !== window.location.origin) {
         await new Promise((resolve, reject) => {
           const image = new Image();
@@ -44,17 +56,9 @@ const getCachedProductImage = source => {
         });
         return { src: imageUrl.href, fromCache: false, cacheable: false };
       }
-      const cache = "caches" in window ? await caches.open(PRODUCT_IMAGE_CACHE) : null;
-      let response = cache ? await cache.match(imageUrl.href) : null;
-      const fromCache = !!response;
-      if (!response) {
-        response = await fetch(imageUrl.href);
-        if (!response.ok) throw new Error("Image request failed");
-        if (cache) {
-          try { await cache.put(imageUrl.href, response.clone()); } catch (e) {}
-        }
-      }
-      return { blob: await response.blob(), fromCache, cacheable: true };
+      const response = await fetch(imageUrl.href, { cache: "no-store" });
+      if (!response.ok) throw new Error("Image request failed");
+      return { blob: await response.blob(), fromCache: false, cacheable: false };
     })().finally(() => pendingProductImages.delete(source));
     pendingProductImages.set(source, pending);
   }
@@ -70,15 +74,15 @@ const FALLBACK_DATA = [
   { id: "combo", name: "Premium Combo Packs", emoji: "🎁", net: true, items: [["Combo Pack - Starter", "1 Box", 3000], ["Combo Pack - Hero", "1 Box", 5000], ["Combo Pack - Legend", "4 Box", 10000]] },
   { id: "sound", name: "One Sound Crackers", emoji: "💥", items: [["2⅞' Kuruvi", "1 Pkt", 35], ["3½' Lakshmi", "1 Pkt", 70], ["4' Deluxe Lakshmi", "1 Pkt", 175], ["Red Bijili (100 Pcs)", "1 Pkt", 185]] },
   { id: "spark", name: "Sparklers", emoji: "✨", items: [["10 Cm Sparklers", "1 Box", 50, "product-images/electric-sparklers-12cm.webp", 30], ["15 Cm Sparklers", "1 Box", 100, "product-images/green-sparklers-15cm.webp", 50], ["30 Cm Sparklers", "1 Box", 120, "product-images/red-sparklers-30cm.webp", 70], ["50 Cm Sparklers", "1 Box", 250, null, 200]] },
-  { id: "chakkar", name: "Ground Chakkars", emoji: "🌀", items: [["Ground Chakkar Big (10 Pcs)", "1 Box (10 Pcs)", 400, null, 320], ["Ground Chakkar Deluxe (10 Pcs)", "1 Box (10 Pcs)", 300, null, 180], ["Rainbow Spinner Special (Sunshine)", "1 Box (10 Pcs)", 400, "https://www.rudracrackers.com/uploads/1787572750045-571abc98008e1556.jpeg", 300], ["Rainbow Spinner Deluxe (Sunshine)", "1 Box (10 Pcs)", 300, "https://www.rudracrackers.com/uploads/1787572764573-ced2b5f915fa42d5.jpeg", 180]] },
-  { id: "flower-pots", name: "Flower Pots", emoji: "🌼", items: [["Flower Pots Special (10 Pcs)", "1 Box", 500, null, 150], ["Flower Pots Deluxe (5 Pcs)", "1 Box", 1250, null, 550], ["F.P. Asoka (10 Pcs)", "1 Box (10 Pcs)", 700, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789111782_6aa3ade6d0acc.webp", 180], ["Colour Koti (10 Pcs)", "1 Box (10 Pcs)", 1250, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789111807_6aa3adffbcce4.webp", 300]] },
+  { id: "chakkar", name: "Ground Chakkars", emoji: "🌀", items: [["Ground Chakkar Big (10 Pcs)", "1 Box (10 Pcs)", 400, null, 320], ["Ground Chakkar Deluxe (10 Pcs)", "1 Box (10 Pcs)", 300, null, 180], ["Rainbow Spinner Special (Sunshine)", "1 Box (10 Pcs)", 400, "product-images/RainbowSpinnerSpecial.jpg", 300], ["Rainbow Spinner Deluxe (Sunshine)", "1 Box (10 Pcs)", 300, "product-images/Rainbow Spinner Deluxe (Sunshine).jpg", 180]] },
+  { id: "flower-pots", name: "Flower Pots", emoji: "🌼", items: [["Flower Pots Special (10 Pcs)", "1 Box", 500, null, 150], ["Flower Pots Deluxe (5 Pcs)", "1 Box", 1250, null, 550], ["F.P. Asoka (10 Pcs)", "1 Box (10 Pcs)", 700, "product-images/flower-pots-asoka.jpg", 180], ["Colour Koti (10 Pcs)", "1 Box (10 Pcs)", 1250, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789111807_6aa3adffbcce4.webp", 300]] },
   { id: "kids", name: "Kids Attractions", emoji: "🧒", items: [["Butterfly (10 Pcs)", "1 Box", 200, "product-images/butterfly-18.webp", 140], ["Helicopter (5 Pcs)", "1 Box", 200, "product-images/helicopter-5.webp", 140], ["Photo Flash Sticks (5 Pcs)", "1 Box", 800, "product-images/photo-flash-sticks-5.webp", 400], ["Mega Siren", "1 Box", 1000, "product-images/mega-siren.webp", 400], ["Little Peacock", "1 Box", 250, null, 200], ["Rising Peacock", "1 Box", 350, null, 250], ["Bada Peacock", "1 Box", 650, null, 500], ["Chitputhi - Small (Rehboth)", "1 Box", 90, null, 70], ["Chitputhi - Big (Rehboth)", "1 Box", 120, null, 100]] },
-  { id: "fount", name: "Fancy Fountains", emoji: "⛲", items: [["Golden Elephant", "1 Pce", 1500], ["Lucky Lion", "1 Pce", 2000], ["Strawberry Cone Fountain", "1 Pce", 1200], ["Tricolour Fountains (5 Pcs)", "1 Box", 1500], ["Spark Showers (5 Pcs)", "1 Box", 620, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789126103_6aa3e5d792320.webp", 124], ["Sun Drop", "1 Box", 230, null, 140], ["Moon Drop", "1 Box", 230, null, 140]] },
+  { id: "fount", name: "Fancy Fountains", emoji: "⛲", items: [["Golden Elephant", "1 Pce", 1500], ["Lucky Lion", "1 Pce", 2000], ["Strawberry Cone Fountain", "1 Pce", 1200], ["Tricolour Fountains (5 Pcs)", "1 Box", 1500], ["Spark Showers (5 Pcs)", "1 Box", 620, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789126103_6aa3e5d792320.webp", 124], ["Sun Drop", "1 Box", 230, "product-images/sundrop.jpg", 140], ["Moon Drop", "1 Box", 230, "product-images/moondrop.jpg", 140]] },
   { id: "rocket", name: "Rockets & Bombs", emoji: "🚀", items: [["Musical Rocket", "1 Box", 1000], ["Two Sound Rocket", "1 Box", 1000], ["Hydro Bomb (10 Pcs)", "1 Box", 450], ["1/2 kg Paper Bomb", "1 Pce", 500], ["Hydro Bomb", "1 Box", 270, "product-images/hydro-bomb.png", 160], ["777 Agni Bomb", "1 Box", 370, "product-images/777-agni-bomb.png", 240], ["Shell Bomb - ARD", "1 Box", 400, null, 340]] },
-  { id: "night", name: "Multicolour Night Shots", emoji: "🎆", items: [["12 Shot Multi Color", "1 Box", 450, null, 340], ["15 Shot Multi Color", "1 Box", 550, null, 430], ["30 Shot Multi Color", "1 Box", 770, "product-images/shots-30-multicolour.webp", 650], ["60 Shot Multi Color", "1 Box", 1250, "product-images/shots-60-multicolour.webp", 1050], ["120 Shot Multi Color", "1 Box", 2350, "product-images/shots-120-multicolour.webp", 1840], ["240 Shot Multi Color", "1 Box", 4550, null, 3540]] },
+  { id: "night", name: "Multicolour Night Shots", emoji: "🎆", items: [["12 Shot Multi Color", "1 Box", 450, null, 340], ["15 Shot Multi Color", "1 Box", 550, "product-images/15-shot-multicolour.jpg", 430], ["30 Shot Multi Color", "1 Box", 770, "product-images/shots-30-multicolour.webp", 650], ["60 Shot Multi Color", "1 Box", 1250, "product-images/shots-60-multicolour.webp", 1050], ["120 Shot Multi Color", "1 Box", 2350, "product-images/shots-120-multicolour.webp", 1840], ["240 Shot Multi Color", "1 Box", 4550, null, 3540]] },
   { id: "single-shots", name: "Single Shots", emoji: "🎆", items: [["Single Shots - 2 inch (3 Pieces) - Narayan", "1 Box", 600, null, 440], ["Single Shots - 3 inch - Supreme", "1 Box", 600, null, 490], ["Single Shots - 4 inch - VB", "1 Box", 700, null, 540]] },
   { id: "garland", name: "Festival Garlands", emoji: "🎊", items: [["1000 Wala", "1 Box", 300, "product-images/kmr-1000-wala.jpg", 250], ["2000 Wala", "1 Box", 550, "product-images/kmr-2000-wala.jpg", 460], ["5000 Wala", "1 Box", 1100, "product-images/kmr-5000-wala.jpg", 900], ["10000 Wala", "1 Box", 2150, "product-images/kmr-10000-wala.jpg", 1800]] },
-  { id: "goa", name: "Goa", emoji: "🎆", net: true, items: [["Ashwini", "1 Box", 650], ["Ashwini Box", "1 Box", 700], ["ARD", "1 Box", 850, "product-images/ard.avif"]] },
+  { id: "goa", name: "Goa", emoji: "🎆", net: true, items: [["Ashwini", "1 Box", 650], ["Ashwini Box", "1 Box", 700, "product-images/goa-ashwini-box.jpg"], ["ARD", "1 Box", 850, "product-images/ard.avif"]] },
   { id: "gift", name: "Gift Boxes", emoji: "🧧", items: [["20 Item Gift Box", "1 Box", 1750], ["30 Item Gift Box", "1 Box", 3000], ["50 Item Gift Box", "1 Box", 5500]] },
 ];
 const offer = (cat, p, offerPrice) => (offerPrice ?? (cat.net ? p : Math.round(p * (1 - DISC))));
@@ -549,6 +553,8 @@ export default function App() {
       console.error("Unable to save enquiry to Firebase:", error);
       setSubmitError(error.message === "Firebase is not configured."
         ? "Firebase isn't configured yet. Add your project settings to .env and deploy firestore.rules before saving enquiries."
+        : error.code === "permission-denied"
+          ? "Firebase denied this order. Publish firestore.rules to the (default) database, then try again."
         : "We couldn't save your enquiry. Please check your connection and try again, or contact us by phone.");
     } finally {
       setSavingOrder(false);
@@ -641,10 +647,11 @@ export default function App() {
     }, 80);
   };
   const showProductImage = (name, unit, price, emoji, imageUrl) => {
-    const image = imageUrl === undefined
+    const preferredImage = LOCAL_PRODUCT_IMAGES[name] || imageUrl;
+    const image = imageUrl === undefined && !preferredImage
       ? PRODUCT_IMAGES[name]
-      : imageUrl
-        ? new URL(imageUrl, new URL(ASSET_BASE, window.location.href)).href
+      : preferredImage
+        ? new URL(preferredImage, new URL(ASSET_BASE, window.location.href)).href
         : null;
     setSelectedProduct({ name, unit, price, emoji, image });
   };
@@ -1587,7 +1594,7 @@ export default function App() {
             {productImage?.status === "error" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>The photo could not be loaded. Please try again while online.</p></div>}
           </div>
           <div className="product-image-footer">
-            <span>{productImage?.status === "loaded" ? (productImage.fromCache ? "Loaded from this browser’s saved image cache." : productImage.cacheable ? "Saved in this browser for next time." : "Loaded from the product image URL.") : "Images are cached in this browser after their first successful load."}</span>
+            <span>{productImage?.status === "loaded" ? "Loaded freshly from the product image server." : "Product images are fetched fresh when opened."}</span>
             <span>Product image</span>
           </div>
         </section>

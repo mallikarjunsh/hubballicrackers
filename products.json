@@ -465,7 +465,7 @@
   },
   {
     "name": "15 Shot Multi Color",
-    "imageUrl": null,
+    "imageUrl": "product-images/15-shot-multicolour.jpg",
     "unit": "1 Box",
     "price": 550,
     "offerPrice": 430,
@@ -606,7 +606,7 @@
   },
   {
     "name": "Rainbow Spinner Special (Sunshine)",
-    "imageUrl": "https://www.rudracrackers.com/uploads/1787572750045-571abc98008e1556.jpeg",
+    "imageUrl": "product-images/RainbowSpinnerSpecial.jpg",
     "unit": "1 Box (10 Pcs)",
     "price": 400,
     "offerPrice": 300,
@@ -618,7 +618,7 @@
   },
   {
     "name": "Rainbow Spinner Deluxe (Sunshine)",
-    "imageUrl": "https://www.rudracrackers.com/uploads/1787572764573-ced2b5f915fa42d5.jpeg",
+    "imageUrl": "product-images/Rainbow Spinner Deluxe (Sunshine).jpg",
     "unit": "1 Box (10 Pcs)",
     "price": 300,
     "offerPrice": 180,
@@ -630,7 +630,7 @@
   },
   {
     "name": "F.P. Asoka (10 Pcs)",
-    "imageUrl": "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789111782_6aa3ade6d0acc.webp",
+    "imageUrl": "product-images/flower-pots-asoka.jpg",
     "unit": "1 Box (10 Pcs)",
     "price": 700,
     "offerPrice": 180,
@@ -666,7 +666,7 @@
   },
   {
     "name": "Sun Drop",
-    "imageUrl": null,
+    "imageUrl": "product-images/sundrop.jpg",
     "unit": "1 Box",
     "price": 230,
     "offerPrice": 140,
@@ -678,7 +678,7 @@
   },
   {
     "name": "Moon Drop",
-    "imageUrl": null,
+    "imageUrl": "product-images/moondrop.jpg",
     "unit": "1 Box",
     "price": 230,
     "offerPrice": 140,
@@ -701,7 +701,7 @@
   },
   {
     "name": "Ashwini Box",
-    "imageUrl": null,
+    "imageUrl": "product-images/goa-ashwini-box.jpg",
     "unit": "1 Box",
     "price": 700,
     "category": "Goa",
