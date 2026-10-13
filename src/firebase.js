@@ -212,15 +212,15 @@ export async function findOrder(orderId) {
 }
 
 export async function findOrdersByMobile(rawMobile) {
-  const mobile = String(rawMobile || "").replace(/\\D/g, "");
-  if (!/^[6-9]\\d{9}$/.test(mobile)) {
+  const mobile = String(rawMobile || "").replace(/\D/g, "");
+  if (!/^[6-9]\d{9}$/.test(mobile)) {
     throw new Error("Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.");
   }
 
   // Compare using the last 10 digits so historical records containing +91,
   // spaces, or separators still match the same Indian mobile number.
   const normalizeMobile = value => {
-    const digits = String(value || "").replace(/\\D/g, "");
+    const digits = String(value || "").replace(/\D/g, "");
     return digits.length > 10 ? digits.slice(-10) : digits;
   };
   const resultsMap = new Map();
