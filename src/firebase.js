@@ -152,9 +152,21 @@ export async function saveOrder(order) {
         return true;
       });
       if (saved) {
+        // Replace the temporary local-only ID with the real Firestore ID. Keeping
+        // both caused duplicate entries in this browser's order history.
+        const syncedRecord = { ...order, status: "pending_confirmation", createdAt: new Date().toISOString() };
+        memoryOrders.delete(localId);
+        memoryOrders.set(id, syncedRecord);
         try {
-          const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
-          history.unshift({ id, ...record, createdAt: new Date().toISOString() });
+          const stored = JSON.parse(localStorage.getItem("mock_orders") || "{}");
+          delete stored[localId];
+          stored[id] = syncedRecord;
+          localStorage.setItem("mock_orders", JSON.stringify(stored));
+        } catch {}
+        try {
+          const history = JSON.parse(localStorage.getItem("local_order_history") || "[]")
+            .filter(item => item?.id !== localId && item?.id !== id);
+          history.unshift({ id, ...syncedRecord });
           localStorage.setItem("local_order_history", JSON.stringify(history.slice(0, 50)));
         } catch {}
         return id;
@@ -200,16 +212,22 @@ export async function findOrder(orderId) {
 }
 
 export async function findOrdersByMobile(rawMobile) {
-  const mobile = String(rawMobile || "").replace(/\D/g, "");
-  if (!/^[6-9]\d{9}$/.test(mobile)) {
+  const mobile = String(rawMobile || "").replace(/\\D/g, "");
+  if (!/^[6-9]\\d{9}$/.test(mobile)) {
     throw new Error("Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.");
   }
 
+  // Compare using the last 10 digits so historical records containing +91,
+  // spaces, or separators still match the same Indian mobile number.
+  const normalizeMobile = value => {
+    const digits = String(value || "").replace(/\\D/g, "");
+    return digits.length > 10 ? digits.slice(-10) : digits;
+  };
   const resultsMap = new Map();
 
   // 1. Search in-memory store
   for (const [id, ord] of memoryOrders.entries()) {
-    if (ord?.customer?.mobile === mobile) {
+    if (normalizeMobile(ord?.customer?.mobile) === mobile) {
       resultsMap.set(id, { id, ...ord });
     }
   }
@@ -218,7 +236,7 @@ export async function findOrdersByMobile(rawMobile) {
   try {
     const mockOrders = JSON.parse(localStorage.getItem("mock_orders") || "{}");
     for (const [id, ord] of Object.entries(mockOrders)) {
-      if (ord?.customer?.mobile === mobile && !resultsMap.has(id)) {
+      if (normalizeMobile(ord?.customer?.mobile) === mobile && !resultsMap.has(id)) {
         resultsMap.set(id, { id, ...ord });
       }
     }
@@ -228,26 +246,60 @@ export async function findOrdersByMobile(rawMobile) {
   try {
     const history = JSON.parse(localStorage.getItem("local_order_history") || "[]");
     for (const ord of history) {
-      if (ord?.customer?.mobile === mobile && ord?.id && !resultsMap.has(ord.id)) {
+      if (normalizeMobile(ord?.customer?.mobile) === mobile && ord?.id && !resultsMap.has(ord.id)) {
         resultsMap.set(ord.id, ord);
       }
     }
   } catch {}
 
-  // 4. Query Firestore if configured
+  // 4. Query Firestore. Try exact matches first, then common historical formats.
+  // Do not report "no orders" when the database query itself failed.
+  let firestoreError = null;
   if (cfg.projectId) {
     try {
-      const q = query(collection(db, "orders"), where("customer.mobile", "==", mobile));
-      const snapshot = await getDocs(q);
-      snapshot.forEach(docSnap => {
+      const exactQuery = query(collection(db, "orders"), where("customer.mobile", "==", mobile));
+      const exactSnapshot = await getDocs(exactQuery);
+      exactSnapshot.forEach(docSnap => {
         resultsMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
       });
+
+      if (exactSnapshot.empty) {
+        const withFormatting = [
+          mobile,
+          `+91${mobile}`,
+          `+91 ${mobile}`,
+          `+91-${mobile}`,
+          `91${mobile}`,
+          `91 ${mobile}`,
+          `0${mobile}`,
+          `${mobile.slice(0, 5)} ${mobile.slice(5)}`,
+          `${mobile.slice(0, 5)}-${mobile.slice(5)}`,
+          `+91 ${mobile.slice(0, 5)} ${mobile.slice(5)}`,
+          `91 ${mobile.slice(0, 5)} ${mobile.slice(5)}`,
+        ];
+        const variantQuery = query(
+          collection(db, "orders"),
+          where("customer.mobile", "in", [...new Set(withFormatting)])
+        );
+        const variantSnapshot = await getDocs(variantQuery);
+        variantSnapshot.forEach(docSnap => {
+          const order = { id: docSnap.id, ...docSnap.data() };
+          if (normalizeMobile(order?.customer?.mobile) === mobile) {
+            resultsMap.set(docSnap.id, order);
+          }
+        });
+      }
     } catch (err) {
+      firestoreError = err;
       console.warn("Unable to fetch orders from Firestore by mobile:", err);
     }
   }
 
   const list = Array.from(resultsMap.values());
+  if (list.length === 0 && firestoreError) {
+    throw new Error("We couldn't reach the order database. Please check your connection and try again; this does not confirm that you have no orders.");
+  }
+
   list.sort((a, b) => {
     const getTs = item => {
       if (item?.createdAt?.toDate) return item.createdAt.toDate().getTime();
