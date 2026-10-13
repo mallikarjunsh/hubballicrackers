@@ -669,7 +669,7 @@ export default function App() {
       <header>
         <img src={LOGO} alt="Hubballi Crackers" style={{ height: 52 }} />
         <div className="brand-wordmark"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></div>
-        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><a href="#order-history" onClick={e => { e.preventDefault(); scrollToOrderHistory(); }}>Order History</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a></nav>
+        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><a href="#order-history" onClick={e => { e.preventDefault(); scrollToOrderHistory(); }}>Order History</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#admin" className="admin-nav-link" onClick={() => setStep("admin")} aria-label="Open administrator order management">📦 View Orders</a><a href="#safety">Safety Tips</a><a href="#contact">Contact</a></nav>
       </header>
 
       <div className="wrap" id="top">
