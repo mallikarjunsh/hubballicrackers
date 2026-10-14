@@ -76,7 +76,7 @@ const FALLBACK_DATA = [
   { id: "spark", name: "Sparklers", emoji: "✨", items: [["10 Cm Sparklers", "1 Box", 50, "product-images/electric-sparklers-12cm.webp", 30], ["15 Cm Sparklers", "1 Box", 100, "product-images/green-sparklers-15cm.webp", 50], ["30 Cm Sparklers", "1 Box", 120, "product-images/red-sparklers-30cm.webp", 70], ["50 Cm Sparklers", "1 Box", 250, null, 200]] },
   { id: "chakkar", name: "Ground Chakkars", emoji: "🌀", items: [["Ground Chakkar Big (10 Pcs)", "1 Box (10 Pcs)", 400, null, 320], ["Ground Chakkar Deluxe (10 Pcs)", "1 Box (10 Pcs)", 300, null, 180], ["Rainbow Spinner Special (Sunshine)", "1 Box (10 Pcs)", 400, "product-images/RainbowSpinnerSpecial.jpg", 300], ["Rainbow Spinner Deluxe (Sunshine)", "1 Box (10 Pcs)", 300, "product-images/Rainbow Spinner Deluxe (Sunshine).jpg", 180]] },
   { id: "flower-pots", name: "Flower Pots", emoji: "🌼", items: [["Flower Pots Special (10 Pcs)", "1 Box", 500, null, 150], ["Flower Pots Deluxe (5 Pcs)", "1 Box", 1250, null, 550], ["F.P. Asoka (10 Pcs)", "1 Box (10 Pcs)", 700, "product-images/flower-pots-asoka.jpg", 180], ["Colour Koti (10 Pcs)", "1 Box (10 Pcs)", 1250, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789111807_6aa3adffbcce4.webp", 300]] },
-  { id: "kids", name: "Kids Attractions", emoji: "🧒", items: [["Butterfly (10 Pcs)", "1 Box", 200, "product-images/butterfly-18.webp", 140], ["Helicopter (5 Pcs)", "1 Box", 200, "product-images/helicopter-5.webp", 140], ["Photo Flash Sticks (5 Pcs)", "1 Box", 800, "product-images/photo-flash-sticks-5.webp", 400], ["Mega Siren", "1 Box", 1000, "product-images/mega-siren.webp", 400], ["Little Peacock", "1 Box", 250, null, 200], ["Rising Peacock", "1 Box", 350, null, 250], ["Bada Peacock", "1 Box", 650, null, 500], ["Chitputhi - Small (Rehboth)", "1 Box", 90, null, 70], ["Chitputhi - Big (Rehboth)", "1 Box", 120, null, 100]] },
+  { id: "kids", name: "Kids Attractions", emoji: "🧒", items: [["Butterfly (10 Pcs)", "1 Box", 200, "product-images/butterfly-18.webp", 140], ["Helicopter (5 Pcs)", "1 Box", 200, "product-images/helicopter-5.webp", 140], ["Photo Flash Sticks (5 Pcs)", "1 Box", 800, "product-images/photo-flash-sticks-5.webp", 400], ["Mega Siren", "1 Box", 1000, "product-images/mega-siren.webp", 400], ["Little Peacock", "1 Box", 250, null, 200], ["Rising Peacock", "1 Box", 350, null, 250], ["Bada Peacock", "1 Box", 650, null, 500], ["Pop Pop", "1 Pkt", 10, "product-images/poppop.jpeg"], ["Bidi Pop", "1 Pkt", 15, "product-images/bidipop.jpg"], ["Chitputhi - Small", "1 Box", 90, "product-images/chitput-small.jpg", 70], ["Chitputhi - Big", "1 Box", 120, "product-images/kit-kat-chittu-puttu-10pcs-box-big.jpg", 100]] },
   { id: "fount", name: "Fancy Fountains", emoji: "⛲", items: [["Golden Elephant", "1 Pce", 1500], ["Lucky Lion", "1 Pce", 2000], ["Strawberry Cone Fountain", "1 Pce", 1200], ["Tricolour Fountains (5 Pcs)", "1 Box", 1500], ["Spark Showers (5 Pcs)", "1 Box", 620, "https://r2.sriseosolutions.com/mtpcrackers.in/upload/1789126103_6aa3e5d792320.webp", 124], ["Sun Drop", "1 Box", 230, "product-images/sundrop.jpg", 140], ["Moon Drop", "1 Box", 230, "product-images/moondrop.jpg", 140]] },
   { id: "rocket", name: "Rockets & Bombs", emoji: "🚀", items: [["Musical Rocket", "1 Box", 1000], ["Two Sound Rocket", "1 Box", 1000], ["Hydro Bomb (10 Pcs)", "1 Box", 450], ["1/2 kg Paper Bomb", "1 Pce", 500], ["Hydro Bomb", "1 Box", 270, "product-images/hydro-bomb.png", 160], ["777 Agni Bomb", "1 Box", 370, "product-images/777-agni-bomb.png", 240], ["Shell Bomb - ARD", "1 Box", 400, null, 340]] },
   { id: "night", name: "Multicolour Night Shots", emoji: "🎆", items: [["12 Shot Multi Color", "1 Box", 450, null, 340], ["15 Shot Multi Color", "1 Box", 550, "product-images/15-shot-multicolour.jpg", 430], ["30 Shot Multi Color", "1 Box", 770, "product-images/shots-30-multicolour.webp", 650], ["60 Shot Multi Color", "1 Box", 1250, "product-images/shots-60-multicolour.webp", 1050], ["120 Shot Multi Color", "1 Box", 2350, "product-images/shots-120-multicolour.webp", 1840], ["240 Shot Multi Color", "1 Box", 4550, null, 3540]] },
@@ -128,9 +128,9 @@ function Qty({ v, set }) {
 
   return (
     <div className="qty">
-      <button aria-label="decrease" onClick={() => set(Math.max(0, v - 1))}>−</button>
+      <button type="button" aria-label="Decrease quantity" onClick={() => set(Math.max(0, v - 1))}>−</button>
       <input inputMode="numeric" value={v || ""} placeholder="0" onChange={e => set(Math.max(0, parseInt(e.target.value.replace(/\D/g, "")) || 0))} />
-      <button className="qty-add-button" aria-label="increase" onClick={() => { set(v + 1); setSparkId(id => id + 1); }}>
+      <button type="button" className="qty-add-button" aria-label="Increase quantity" onClick={() => { set(v + 1); setSparkId(id => id + 1); }}>
         +{sparkId > 0 && <span key={sparkId} className="qty-spark-burst" aria-hidden="true" />}
       </button>
     </div>
@@ -178,15 +178,39 @@ function HeroCarousel() {
 }
 
 export default function App() {
-  const [DATA, setData] = useState(FALLBACK_DATA);
+  const [DATA, setData] = useState([]);
   const [live, setLive] = useState("loading");
   const [showBrandIntro, setShowBrandIntro] = useState(true);
+  const [chromeHidden, setChromeHidden] = useState(false);
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => setShowBrandIntro(false), reducedMotion ? 50 : 1800);
     return () => window.clearTimeout(timer);
   }, []);
-  useEffect(() => { loadRates().then(r => { if (r) { if (typeof r.discount === "number") DISC = r.discount; if (r.minOrder) MIN = r.minOrder; setData(r.cats); setLive("live"); } else setLive("offline"); }).catch(() => setLive("offline")); }, []);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y < 24) setChromeHidden(false);
+      else if (y > lastY + 4) setChromeHidden(true);
+      else if (y < lastY - 4) setChromeHidden(false);
+      lastY = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  useEffect(() => {
+    loadRates().then(r => {
+      if (!r || !Array.isArray(r.cats) || r.cats.length === 0) {
+        setLive("error");
+        return;
+      }
+      if (typeof r.discount === "number") DISC = r.discount;
+      if (r.minOrder) MIN = r.minOrder;
+      setData(r.cats);
+      setLive("live");
+    }).catch(() => setLive("error"));
+  }, []);
   const [cart, setCart] = useState(load);
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
@@ -669,10 +693,10 @@ export default function App() {
         </div>
       </div>}
       <div className="banner">🔥 Deepavali Special Offer · Festive Savings Up to {Math.round(DISC * 100)}% · Limited Stock 🔥</div>
-      <header>
+      <header className={chromeHidden ? "chrome-hidden" : ""}>
         <img src={LOGO} alt="Hubballi Crackers" style={{ height: 52 }} />
         <div className="brand-wordmark"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></div>
-        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><a href="#order-history" onClick={e => { e.preventDefault(); scrollToOrderHistory(); }}>Order History</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#admin" className="admin-nav-link" onClick={() => setStep("admin")} aria-label="Open administrator order management">📦 View Orders</a><a href="#safety">Safety Tips</a><a href="#contact">Contact</a></nav>
+        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a><a href="#admin" className="admin-nav-link" onClick={e => { e.preventDefault(); setStep("admin"); window.scrollTo(0, 0); }} aria-label="Open administrator order history and management">📜 Order History &amp; View Orders</a></nav>
       </header>
 
       <div className="wrap" id="top">
@@ -684,7 +708,7 @@ export default function App() {
           </div>
           <HeroCarousel />
           {live === "loading" && <div className="empty">Loading latest rates…</div>}
-          {live === "offline" && <div className="err" style={{ textAlign: "center" }}>Showing saved rates (could not reach live rate list).</div>}
+          {live === "error" && <div className="err" style={{ textAlign: "center" }}>Could not load rates from Firebase. Please check your connection and try again.</div>}
           <div className="tools"><input placeholder="🔍 Search crackers…" value={q} onChange={e => setQ(e.target.value)} /></div>
           <div className="chips">
             <button className={"chip" + (cat === "all" ? " on" : "")} onClick={() => setCat("all")}>All</button>
@@ -708,7 +732,7 @@ export default function App() {
             </section>
           ))}
 
-          <section className="order-history-section" id="order-history">
+          {currentUser && isUserAdmin(currentUser) && <section className="order-history-section" id="order-history">
             <div className="order-history-header">
               <h2>📜 Order History <small style={{ fontSize: "14px", fontWeight: "normal", color: "var(--mute)" }}>(ನಿಮ್ಮ ಹಿಂದಿನ ಆರ್ಡರ್‌ಗಳು)</small></h2>
               <p>Enter your 10-digit mobile number to view all your past cracker enquiries, order statuses, and totals.</p>
@@ -943,7 +967,7 @@ export default function App() {
                 </div>
               </div>
             )}
-          </section>
+          </section>}
         </>}
 
         {step === "lookup" && <section className="order-page">
@@ -982,7 +1006,7 @@ export default function App() {
             </div>}
             <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
               <button className="btn alt order-back" type="button" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>Back to Pricelist</button>
-              <button className="btn alt order-back" type="button" onClick={() => scrollToOrderHistory()}>View All Past Orders by Phone →</button>
+              <button className="btn alt order-back" type="button" onClick={() => { setStep("admin"); window.scrollTo(0, 0); }}>View All Past Orders by Phone →</button>
             </div>
           </div>
         </section>}
@@ -1123,8 +1147,8 @@ export default function App() {
                 <div className="admin-header-row">
                   <div className="admin-header-titles">
                     <div className="mini-badge">🛡️ Store Administration</div>
-                    <h1>Order Management &amp; Delivery Tracking</h1>
-                    <p>View all cracker orders, verify customer details, mark payments, and track delivery stages.</p>
+                    <h1>Order History &amp; Management</h1>
+                    <p>View order history, verify customer details, mark payments, and track delivery stages.</p>
                   </div>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                     <div className="admin-user-pill">
@@ -1565,7 +1589,7 @@ export default function App() {
         </div>
       </div>
 
-      {step === "list" && <div className="bar">
+      {step === "list" && <div className={"bar" + (chromeHidden ? " chrome-hidden" : "")}>
         <div><span>Items</span><b>{count}</b></div>
         <div><span>Net Total</span><b>{inr(net)}</b></div>
         <div><span>You Save</span><b style={{ color: "var(--ok)" }}>{inr(save)}</b></div>
@@ -1575,7 +1599,7 @@ export default function App() {
 
       <footer id="contact"><div className="wrap grid">
         <div><img src={LOGO} alt="" style={{ height: 60, display: "block", marginBottom: 6 }} /><h4>About</h4><b>Hubballi Crackers · ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</b> — Wholesale &amp; Retail Fancy Fireworks. All kinds of crackers available. Genuine products, best quality, trusted dealer.</div>
-        <div><h4>Contact</h4>📍 Tadas Cross, Near Gayatri Matt, Shiggaon 581116<br />📍 Stall No. 6, APMC Ground, Shiggaon<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
+        <div><h4>Contact</h4>📍 Tadas Cross, Near Gayatri Matt, Ramankoppa/Tadas Cross 581116<br />📍 Stall No. 6, APMC Ground, Shiggaon<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
         <div><h4>Notice</h4>Online sale of firecrackers is not permitted (Supreme Court, 2018). Add products to the cart and submit an enquiry; we confirm the order offline.</div>
       </div></footer>
 

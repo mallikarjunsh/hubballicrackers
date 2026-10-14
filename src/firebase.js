@@ -101,6 +101,11 @@ export async function loadRates() {
       }
       c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice]);
     });
+    cats.sort((a, b) => {
+      if (a.name === "One Sound Crackers") return 1;
+      if (b.name === "One Sound Crackers") return -1;
+      return 0;
+    });
     const s = st.exists() ? st.data() : {};
     return { cats, discount: s.discount, minOrder: s.minOrder };
   } catch (err) {

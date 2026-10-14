@@ -281,6 +281,28 @@
     "order": 56
   },
   {
+    "name": "Pop Pop",
+    "imageUrl": "product-images/poppop.jpeg",
+    "unit": "1 Pkt",
+    "price": 10,
+    "category": "Kids Attractions",
+    "emoji": "ðŸ§’",
+    "net": false,
+    "active": true,
+    "order": 57
+  },
+  {
+    "name": "Bidi Pop",
+    "imageUrl": "product-images/bidipop.jpg",
+    "unit": "1 Pkt",
+    "price": 15,
+    "category": "Kids Attractions",
+    "emoji": "ðŸ§’",
+    "net": false,
+    "active": true,
+    "order": 58
+  },
+  {
     "name": "Shell Bomb - ARD",
     "imageUrl": null,
     "unit": "1 Box",
@@ -293,8 +315,8 @@
     "order": 62
   },
   {
-    "name": "Chitputhi - Small (Rehboth)",
-    "imageUrl": null,
+    "name": "Chitputhi - Small",
+    "imageUrl": "product-images/chitput-small.jpg",
     "unit": "1 Box",
     "price": 90,
     "offerPrice": 70,
@@ -305,8 +327,8 @@
     "order": 60
   },
   {
-    "name": "Chitputhi - Big (Rehboth)",
-    "imageUrl": null,
+    "name": "Chitputhi - Big",
+    "imageUrl": "product-images/kit-kat-chittu-puttu-10pcs-box-big.jpg",
     "unit": "1 Box",
     "price": 120,
     "offerPrice": 100,

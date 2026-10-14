@@ -103,6 +103,9 @@ const legacyProductNames = new Map([
   ["2000-wala-premium", "2000 Wala (Premium)"],
   ["5000-wala-premium", "5000 Wala (Premium)"],
   ["100-wala", "100 Wala"],
+  ["rainbow-spinner-deluxe-sunshine", "Rainbow Spinner Deluxe"],
+  ["chitputhi-small-rehboth", "Chitputhi - Small (Rehboth)"],
+  ["chitputhi-big-rehboth", "Chitputhi - Big (Rehboth)"],
 ]);
 const unrelatedProducts = existing.docs.filter(product => {
   const name = product.data().name;
