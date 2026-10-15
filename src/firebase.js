@@ -99,7 +99,7 @@ export async function loadRates() {
         };
         cats.push(c);
       }
-      c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice]);
+      c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice, Number(p.stockQuantity) || 0, Number(p.lowStockThreshold) || 5]);
     });
     cats.sort((a, b) => {
       if (a.name === "One Sound Crackers") return 1;
@@ -273,4 +273,38 @@ export async function updateOrder(orderId, updates) {
   if (!cfg.projectId) throw new Error("Firebase is not configured.");
   await updateDoc(doc(db, "orders", id), updates);
   return true;
+}
+
+export async function updateProductStock(productName, stockQuantity, lowStockThreshold) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const id = String(productName || "")
+    .normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (!id) throw new Error("Product name is required.");
+  await updateDoc(doc(db, "products", id), {
+    stockQuantity: Math.max(0, Number(stockQuantity) || 0),
+    lowStockThreshold: Math.max(0, Number(lowStockThreshold) || 0),
+  });
+}
+
+export async function confirmOrderAndDeductStock(order, updates = {}) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const orderRef = doc(db, "orders", String(order.id));
+  const items = Array.isArray(order.items) ? order.items : [];
+  const productRefs = items.map(item => {
+    const id = String(item.name || "").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return { item, ref: doc(db, "products", id) };
+  });
+  await runTransaction(db, async transaction => {
+    const productSnapshots = [];
+    for (const product of productRefs) productSnapshots.push(await transaction.get(product.ref));
+    for (let i = 0; i < productRefs.length; i += 1) {
+      const snapshot = productSnapshots[i];
+      const quantity = Number(productRefs[i].item.quantity) || 0;
+      const available = Number(snapshot.data()?.stockQuantity) || 0;
+      if (!snapshot.exists() || available < quantity) throw new Error(`Insufficient stock for ${productRefs[i].item.name}. Available: ${available}.`);
+      transaction.update(productRefs[i].ref, { stockQuantity: available - quantity });
+    }
+    transaction.update(orderRef, { ...updates, status: "confirmed", stockDeducted: true, stockDeductedAt: new Date().toISOString() });
+  });
 }

@@ -1845,6 +1845,42 @@ footer {
 	border-color: var(--leaf);
 	background: linear-gradient(135deg, rgba(23, 96, 71, 0.16), rgba(246, 189, 50, 0.25));
 }
+.admin-insights-grid { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(280px, 1.3fr); gap: 12px; margin-bottom: 20px; }
+.admin-insight-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.admin-ranking-row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.admin-ranking-row:last-child { border-bottom: 0; }
+.admin-note-box { display: flex; gap: 10px; align-items: end; margin: 14px 0; padding: 12px; background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; }
+.admin-note-box label { flex: 1; color: var(--mute); font-size: 12px; }
+.admin-note-box textarea { display: block; margin-top: 5px; resize: vertical; }
+@media (max-width: 640px) { .admin-note-box { flex-direction: column; align-items: stretch; } .admin-note-box button { width: 100%; } }
+.admin-stock-panel { margin-bottom: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.admin-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; position: sticky; top: 76px; z-index: 8; }
+.admin-tab { flex: 1 1 150px; min-height: 42px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--mute); font: inherit; font-weight: 800; cursor: pointer; }
+.admin-tab:hover, .admin-tab.active { background: var(--leaf); color: #fff; border-color: var(--leaf); }
+.admin-stock-panel summary { cursor: pointer; font-weight: 800; color: var(--deep); }
+.admin-stock-list { display: grid; gap: 8px; margin-top: 12px; }
+.admin-stock-row { display: grid; grid-template-columns: minmax(180px, 1fr) 110px 120px 80px; gap: 10px; align-items: end; padding: 8px 0; border-top: 1px solid var(--line); }
+.admin-stock-row small { display: block; color: var(--mute); font-size: 11px; }
+.admin-stock-row label { color: var(--mute); font-size: 11px; font-weight: 700; }
+.admin-stock-row input { margin-top: 3px; padding: 7px; }
+@media (max-width: 640px) { .admin-insights-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .admin-stock-row { grid-template-columns: 1fr 1fr; } .admin-stock-row > div { grid-column: 1/-1; } .admin-stock-row button { width: 100%; } }
+
+/* Admin tabs behave as separate workspaces. */
+.admin-page[data-admin-tab="overview"] .admin-stock-panel,
+.admin-page[data-admin-tab="overview"] .admin-filters-bar,
+.admin-page[data-admin-tab="overview"] .admin-orders-list,
+.admin-page[data-admin-tab="overview"] .admin-filters-bar ~ .empty,
+.admin-page[data-admin-tab="overview"] .admin-filters-bar ~ .err { display: none; }
+.admin-page[data-admin-tab="orders"] .admin-stats-grid,
+.admin-page[data-admin-tab="orders"] .admin-insights-grid,
+.admin-page[data-admin-tab="orders"] .admin-stock-panel { display: none; }
+.admin-page[data-admin-tab="stock"] .admin-stats-grid,
+.admin-page[data-admin-tab="stock"] .admin-insights-grid,
+.admin-page[data-admin-tab="stock"] .admin-filters-bar,
+.admin-page[data-admin-tab="stock"] .admin-orders-list,
+.admin-page[data-admin-tab="stock"] .admin-filters-bar ~ .empty,
+.admin-page[data-admin-tab="stock"] .admin-filters-bar ~ .err { display: none; }
 
 @media (max-width: 640px) {
 	header {

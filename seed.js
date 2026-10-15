@@ -124,7 +124,11 @@ const writes = [
   ...products.map(product => ({
     type: "set",
     ref: db.collection("products").doc(productDocumentId(product.name)),
-    data: product,
+    data: {
+      ...product,
+      stockQuantity: Number.isFinite(product.stockQuantity) ? product.stockQuantity : 0,
+      lowStockThreshold: Number.isFinite(product.lowStockThreshold) ? product.lowStockThreshold : 5,
+    },
   })),
   ...existing.docs
     .filter(product => !expectedIds.has(product.id))

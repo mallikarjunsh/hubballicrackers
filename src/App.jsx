@@ -6,6 +6,8 @@ import {
   findOrdersByMobile,
   loadAllOrders,
   updateOrder,
+  updateProductStock,
+  confirmOrderAndDeductStock,
   signInWithGoogle,
   logOutAdmin,
   subscribeToAuth,
@@ -137,6 +139,14 @@ function Qty({ v, set }) {
   );
 }
 
+function printOrderReceipt(order) {
+  const popup = window.open("", "_blank", "width=800,height=900");
+  if (!popup) return;
+  const items = (order.items || []).map(item => `<tr><td>${item.name} (${item.unit || ""})</td><td>${item.quantity || 0}</td><td>${inr(item.total || 0)}</td></tr>`).join("");
+  popup.document.write(`<!doctype html><html><head><title>Order ${order.id} Receipt</title><style>body{font:14px Arial;padding:28px;color:#251b12}h1{color:#176047}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}td:nth-child(2),td:nth-child(3){text-align:right}.total{font-size:18px;font-weight:bold;margin-top:20px;text-align:right}</style></head><body><h1>Hubballi Crackers</h1><p>Order #${order.id}<br>${formatOrderDate(order.createdAt)}</p><p><b>${order.customer?.name || ""}</b><br>+91 ${order.customer?.mobile || ""}<br>${order.customer?.address || ""}, ${order.customer?.city || ""}, ${order.customer?.state || ""}</p><table><thead><tr><th>Product</th><th>Qty</th><th>Total</th></tr></thead><tbody>${items}</tbody></table><p class="total">Overall Total: ${inr(order.total || 0)}</p><script>window.onload=()=>window.print()</script></body></html>`);
+  popup.document.close();
+}
+
 function HeroCarousel() {
   const [active, setActive] = useState(0);
 
@@ -234,6 +244,10 @@ export default function App() {
   const [adminFilter, setAdminFilter] = useState("all");
   const [adminSearch, setAdminSearch] = useState("");
   const [adminSort, setAdminSort] = useState("date_desc");
+  const [stockDrafts, setStockDrafts] = useState({});
+  const [stockSaving, setStockSaving] = useState("");
+  const [adminNotes, setAdminNotes] = useState({});
+  const [adminTab, setAdminTab] = useState("overview");
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [actionToast, setActionToast] = useState(null);
   const [editingTrackingId, setEditingTrackingId] = useState(null);
@@ -334,7 +348,12 @@ export default function App() {
       paidAt: nextPaid ? new Date().toISOString() : null
     };
     try {
-      await updateOrder(order.id, updates);
+      if (newStatus === "confirmed" && order.status !== "confirmed" && !order.stockDeducted) {
+        await confirmOrderAndDeductStock(order, updates);
+        updates.stockDeducted = true;
+      } else {
+        await updateOrder(order.id, updates);
+      }
       setAdminOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));
       setActionToast({
         type: "success",
@@ -453,6 +472,14 @@ export default function App() {
     const confirmedOrders = adminOrders.filter(o => o.status === "confirmed").length;
     const dispatchedOrders = adminOrders.filter(o => o.status === "dispatched").length;
     const deliveredOrders = adminOrders.filter(o => o.status === "delivered").length;
+    const todayKey = new Date().toDateString();
+    const todayOrders = adminOrders.filter(o => {
+      const d = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt);
+      return d.toString() !== "Invalid Date" && d.toDateString() === todayKey;
+    });
+    const productTotals = {};
+    adminOrders.forEach(o => (o.items || []).forEach(item => { productTotals[item.name] = (productTotals[item.name] || 0) + (Number(item.quantity) || 0); }));
+    const topProducts = Object.entries(productTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
     return {
       totalOrders,
       totalRevenue,
@@ -463,8 +490,46 @@ export default function App() {
       confirmedOrders,
       dispatchedOrders,
       deliveredOrders,
+      todayOrders: todayOrders.length,
+      todayRevenue: todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0),
+      topProducts,
     };
   }, [adminOrders]);
+
+  const lowStockProducts = useMemo(() => DATA.flatMap(category => category.items
+    .filter(item => Number(item[5]) <= Number(item[6] ?? 5))
+    .map(item => ({ name: item[0], quantity: Number(item[5]) || 0, threshold: Number(item[6]) || 5 }))), [DATA]);
+  const updateStockDraft = (name, field, value) => setStockDrafts(prev => ({ ...prev, [name]: { ...(prev[name] || {}), [field]: value } }));
+  const saveStock = async (item) => {
+    const draft = stockDrafts[item[0]] || {};
+    setStockSaving(item[0]);
+    try {
+      await updateProductStock(item[0], draft.quantity ?? item[5] ?? 0, draft.threshold ?? item[6] ?? 5);
+      const savedQuantity = Number(draft.quantity ?? item[5] ?? 0) || 0;
+      const savedThreshold = Number(draft.threshold ?? item[6] ?? 5) || 5;
+      setData(prev => prev.map(category => ({ ...category, items: category.items.map(row => row[0] === item[0] ? [...row.slice(0, 5), savedQuantity, savedThreshold] : row) })));
+      setActionToast({ type: "success", text: `${item[0]} stock updated.` });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err) {
+      setActionToast({ type: "error", text: `Stock update failed: ${err.message}` });
+    } finally { setStockSaving(""); }
+  };
+  const saveAdminNote = async order => {
+    const note = adminNotes[order.id] ?? order.adminNote ?? "";
+    try {
+      await updateOrder(order.id, { adminNote: note });
+      setAdminOrders(prev => prev.map(item => item.id === order.id ? { ...item, adminNote: note } : item));
+      setActionToast({ type: "success", text: `Note saved for order #${order.id}.` });
+      setTimeout(() => setActionToast(null), 2500);
+    } catch (err) { setActionToast({ type: "error", text: `Note update failed: ${err.message}` }); }
+  };
+  const exportOrdersCsv = () => {
+    const escape = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const rows = [["Order ID", "Date", "Customer", "Mobile", "City", "Status", "Payment", "Total", "Items"], ...filteredAdminOrders.map(order => [order.id, formatOrderDate(order.createdAt), order.customer?.name, order.customer?.mobile, order.customer?.city, order.status, order.paid || order.paymentStatus === "paid" ? "Paid" : "Unpaid", order.total, (order.items || []).map(item => `${item.name} x${item.quantity}`).join("; ")])];
+    const blob = new Blob([rows.map(row => row.map(escape).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob); const link = document.createElement("a");
+    link.href = url; link.download = `hubballi-orders-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
+  };
 
   const filteredAdminOrders = useMemo(() => {
     let result = [...adminOrders];
@@ -1039,7 +1104,7 @@ export default function App() {
           {submitError && <p className="err" role="alert" style={{ textAlign: "right" }}>{submitError}</p>}
         </>}
 
-        {step === "done" && <div className="panel ok"><h2>✅ Enquiry saved</h2><p>Your details are saved. Send the enquiry to us and keep this Order ID to look up its details. We will confirm by WhatsApp or phone.</p>
+        {step === "done" && <div className="panel ok"><h2>✅ Enquiry saved</h2><p>Your details are saved. Complete your order by sending the enquiry by email or WhatsApp, and keep this Order ID to look up its details.</p>
           <p className="order-id">Order ID: <strong>{orderId}</strong></p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", margin: "14px 0" }}>
             <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"mailto:" + SHOP_EMAIL + "?subject=" + encodeURIComponent("Enquiry - " + SHOP) + "&body=" + encodeURIComponent(sent)}>✉️ Send by Email</a>
@@ -1052,7 +1117,7 @@ export default function App() {
           </div></div>}
 
         {step === "admin" && (
-          <section className="admin-page">
+          <section className="admin-page" data-admin-tab={adminTab}>
             {authChecking && (
               <div className="admin-auth-card" role="status">
                 <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔐</div>
@@ -1180,6 +1245,7 @@ export default function App() {
                     >
                       {adminLoading ? "Refreshing…" : "🔄 Refresh Orders"}
                     </button>
+                    <button className="btn alt" type="button" onClick={exportOrdersCsv} disabled={!filteredAdminOrders.length}>⬇️ Export CSV</button>
                     {adminOrders.length === 0 && !adminLoading && (
                       <button
                         className="btn alt"
@@ -1206,7 +1272,13 @@ export default function App() {
               </div>
             )}
 
-            <div className="admin-stats-grid">
+            <div className="admin-tabs" role="tablist" aria-label="Admin functions">
+              {[['overview', '📊 Overview', 'admin-overview'], ['orders', '📜 Orders & Tracking', 'admin-orders'], ['stock', '📦 Stock', 'admin-stock']].map(([id, label, target]) => (
+                <button key={id} type="button" role="tab" aria-selected={adminTab === id} className={adminTab === id ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab(id); document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</button>
+              ))}
+            </div>
+
+            <div className="admin-stats-grid" id="admin-overview">
               <div className="admin-stat-card">
                 <div className="admin-stat-label">Total Orders</div>
                 <div className="admin-stat-val">{adminStats.totalOrders}</div>
@@ -1233,7 +1305,42 @@ export default function App() {
               </div>
             </div>
 
-            <div className="admin-filters-bar">
+            <div className="admin-insights-grid">
+              <div className="admin-insight-card">
+                <div className="admin-stat-label">Today’s Sales</div>
+                <div className="admin-stat-val">{inr(adminStats.todayRevenue)}</div>
+                <div className="admin-stat-sub">{adminStats.todayOrders} order{adminStats.todayOrders === 1 ? "" : "s"} today</div>
+              </div>
+              <div className="admin-insight-card">
+                <div className="admin-stat-label">Top Products</div>
+                {adminStats.topProducts.length ? adminStats.topProducts.map(([name, quantity]) => <div className="admin-ranking-row" key={name}><span>{name}</span><b>{quantity}</b></div>) : <div className="admin-stat-sub">No product sales yet</div>}
+              </div>
+              <div className="admin-insight-card admin-low-stock-card">
+                <div className="admin-stat-label">Low Stock Alerts</div>
+                <div className="admin-stat-val" style={{ color: lowStockProducts.length ? "var(--brand)" : "var(--ok)" }}>{lowStockProducts.length}</div>
+                <div className="admin-stat-sub">Products at or below their threshold</div>
+                {lowStockProducts.slice(0, 4).map(product => <div className="admin-ranking-row" key={product.name}><span>{product.name}</span><b>{product.quantity} left</b></div>)}
+              </div>
+            </div>
+
+            <details className="admin-stock-panel" id="admin-stock">
+              <summary>📦 Update Product Stock</summary>
+              <div className="admin-stock-list">
+                {DATA.flatMap(category => category.items.map(item => ({ category: category.name, item }))).map(({ category, item }) => {
+                  const draft = stockDrafts[item[0]] || {};
+                  const quantity = draft.quantity ?? item[5] ?? 0;
+                  const threshold = draft.threshold ?? item[6] ?? 5;
+                  return <div className="admin-stock-row" key={item[0]}>
+                    <div><b>{item[0]}</b><small>{category}</small></div>
+                    <label>Stock<input type="number" min="0" value={quantity} onChange={e => updateStockDraft(item[0], "quantity", e.target.value)} /></label>
+                    <label>Alert at<input type="number" min="0" value={threshold} onChange={e => updateStockDraft(item[0], "threshold", e.target.value)} /></label>
+                    <button className="btn alt" type="button" disabled={stockSaving === item[0]} onClick={() => saveStock(item)}>{stockSaving === item[0] ? "Saving…" : "Save"}</button>
+                  </div>;
+                })}
+              </div>
+            </details>
+
+            <div className="admin-filters-bar" id="admin-orders">
               <input
                 placeholder="🔍 Search orders by ID, name, phone, city, address…"
                 value={adminSearch}
@@ -1415,9 +1522,15 @@ export default function App() {
                         </div>
                       </div>
 
+                      <div className="admin-note-box">
+                        <label><b>📝 Internal Admin Note</b><textarea rows="2" value={adminNotes[order.id] ?? order.adminNote ?? ""} onChange={e => setAdminNotes(prev => ({ ...prev, [order.id]: e.target.value }))} placeholder="Add a private note for this order…" /></label>
+                        <button className="btn alt" type="button" onClick={() => saveAdminNote(order)}>Save Note</button>
+                      </div>
+
                       {/* Primary Action Controls */}
                       <div className="admin-actions-bar">
                         <div className="admin-action-buttons">
+                          <button className="btn alt" type="button" onClick={() => printOrderReceipt(order)}>🖨️ Print / Save PDF</button>
                           {/* Payment Toggle */}
                           {isPaid ? (
                             <button
