@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   loadRates,
   saveOrder,
@@ -187,6 +187,72 @@ function HeroCarousel() {
   );
 }
 
+function LoadingFireworks() {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    const ctx = canvas.getContext("2d");
+    let frame = 0;
+    let raf;
+    let lastLaunch = 0;
+    const rockets = [];
+    const sparks = [];
+    const colors = ["#ff5f6d", "#ffd166", "#48cae4", "#c77dff", "#80ed99", "#ff9f1c"];
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    const launch = () => rockets.push({ x: window.innerWidth * (.12 + Math.random() * .76), y: window.innerHeight + 20, target: window.innerHeight * (.15 + Math.random() * .34), speed: 5 + Math.random() * 2, color: colors[Math.floor(Math.random() * colors.length)], trail: [] });
+    const burst = rocket => {
+      for (let i = 0; i < 46; i++) {
+        const angle = (Math.PI * 2 * i) / 46;
+        const speed = 1.2 + Math.random() * 3.4;
+        sparks.push({ x: rocket.x, y: rocket.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, color: rocket.color });
+      }
+    };
+    const draw = now => {
+      const w = window.innerWidth, h = window.innerHeight;
+      ctx.fillStyle = "rgba(5, 10, 20, .22)";
+      ctx.fillRect(0, 0, w, h);
+      if (now - lastLaunch > 420) { launch(); lastLaunch = now; }
+      rockets.forEach((r, index) => {
+        r.trail.push({ x: r.x, y: r.y });
+        if (r.trail.length > 9) r.trail.shift();
+        r.y -= r.speed;
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        r.trail.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+        ctx.stroke();
+        ctx.fillStyle = "#fff8d6";
+        ctx.beginPath(); ctx.arc(r.x, r.y, 2.5, 0, Math.PI * 2); ctx.fill();
+        if (r.y <= r.target) { burst(r); rockets.splice(index, 1); }
+      });
+      sparks.forEach((s, index) => {
+        s.x += s.vx; s.y += s.vy; s.vy += .035; s.vx *= .985; s.life -= .014;
+        ctx.globalAlpha = Math.max(0, s.life);
+        ctx.fillStyle = s.color;
+        ctx.shadowBlur = 10; ctx.shadowColor = s.color;
+        ctx.beginPath(); ctx.arc(s.x, s.y, 1.7, 0, Math.PI * 2); ctx.fill();
+        if (s.life <= 0) sparks.splice(index, 1);
+      });
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      frame = requestAnimationFrame(draw);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    ctx.fillStyle = "#050a14"; ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+    frame = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); };
+  }, []);
+  return <canvas ref={canvasRef} className="loading-fireworks" aria-hidden="true" />;
+}
+
 export default function App() {
   const [DATA, setData] = useState([]);
   const [live, setLive] = useState("loading");
@@ -194,7 +260,7 @@ export default function App() {
   const [chromeHidden, setChromeHidden] = useState(false);
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(() => setShowBrandIntro(false), reducedMotion ? 50 : 1800);
+    const timer = window.setTimeout(() => setShowBrandIntro(false), reducedMotion ? 50 : 3200);
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
@@ -749,6 +815,13 @@ export default function App() {
   return (
     <>
       {showBrandIntro && <div className="brand-intro" role="status" aria-label="Hubballi Crackers">
+        <LoadingFireworks />
+        <div className="cracker-animation" aria-hidden="true">
+          <span className="cracker-rocket cracker-rocket-left">🚀</span>
+          <span className="firework-burst firework-burst-left"><i /><i /><i /><i /><i /><i /></span>
+          <span className="firework-burst firework-burst-right"><i /><i /><i /><i /><i /><i /></span>
+          <span className="cracker-rocket cracker-rocket-right">🚀</span>
+        </div>
         <div className="brand-intro-card">
           <span className="brand-intro-kicker">Welcome to</span>
           <span className="brand-intro-english">Hubballi Crackers</span>
