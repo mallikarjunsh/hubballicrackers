@@ -1905,6 +1905,74 @@ footer {
 .admin-page[data-admin-tab="stock"] .admin-orders-list,
 .admin-page[data-admin-tab="stock"] .admin-filters-bar ~ .empty,
 .admin-page[data-admin-tab="stock"] .admin-filters-bar ~ .err { display: none; }
+.admin-rate-panel { margin-bottom: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.admin-inventory-panel { margin-bottom: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.inventory-shop { margin-top: 18px; }
+.inventory-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 20px; }
+.inventory-shop h3 { margin: 0 0 8px; color: var(--deep); }
+.inventory-table-wrap { overflow-x: auto; }
+.inventory-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+.inventory-table th, .inventory-table td { border-top: 1px solid var(--line); padding: 8px; text-align: right; white-space: nowrap; }
+.inventory-table th:first-child, .inventory-table td:first-child { text-align: left; }
+.inventory-table small { display: block; color: var(--mute); font-size: 11px; }
+.inventory-table input { width: 90px; padding: 6px; }
+.admin-page[data-admin-tab="overview"] .admin-inventory-panel,
+.admin-page[data-admin-tab="orders"] .admin-inventory-panel,
+.admin-page[data-admin-tab="stock"] .admin-inventory-panel,
+.admin-page[data-admin-tab="rates"] .admin-inventory-panel { display: none; }
+.admin-page[data-admin-tab="inventory"] .admin-stats-grid,
+.admin-page[data-admin-tab="inventory"] .admin-insights-grid,
+.admin-page[data-admin-tab="inventory"] .admin-stock-panel,
+.admin-page[data-admin-tab="inventory"] .admin-rate-panel,
+.admin-page[data-admin-tab="inventory"] .admin-filters-bar,
+.admin-page[data-admin-tab="inventory"] .admin-orders-list,
+.admin-page[data-admin-tab="inventory"] .admin-filters-bar ~ .empty,
+.admin-page[data-admin-tab="inventory"] .admin-filters-bar ~ .err { display: none; }
+.admin-tabs + .admin-tab { display: none; }
+.admin-rate-header h2 { margin: 0 0 4px; color: var(--deep); }
+.admin-rate-header p { margin: 0 0 12px; color: var(--mute); font-size: 13px; }
+.admin-add-product { display: grid; grid-template-columns: 1.2fr 1fr .8fr .8fr .8fr 1.5fr auto; gap: 8px; align-items: end; padding: 12px 0 16px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.admin-add-product h3 { grid-column: 1/-1; margin: 0; color: var(--deep); font-size: 16px; }
+.admin-add-product input { min-width: 0; }
+.admin-rate-list { display: grid; gap: 8px; }
+.admin-rate-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(180px, 1.35fr) 140px 120px 120px 110px 80px 120px; gap: 10px; align-items: end; padding: 8px 0; border-top: 1px solid var(--line); }
+.admin-rate-row small { display: block; color: var(--mute); font-size: 11px; }
+.admin-rate-row label { color: var(--mute); font-size: 11px; font-weight: 700; }
+.admin-rate-row input { margin-top: 3px; padding: 7px; }
+.admin-variant-label { align-self: center; color: var(--deep); font-size: 12px; }
+.admin-variant-label small { display: block; color: var(--mute); font-size: 11px; }
+.admin-image-field img { display: block; width: 42px; height: 42px; object-fit: cover; margin-top: 5px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); }
+.admin-rate-row .btn.danger { background: #9e3027; color: #fff; border-color: #9e3027; }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 14px; }
+.product-card { overflow: hidden; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 5px 16px rgba(90,40,30,.08); transition: transform .18s ease, box-shadow .18s ease; }
+.product-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(90,40,30,.14); }
+.product-card-image { display: grid; place-items: center; width: 100%; height: 150px; padding: 0; border: 0; background: linear-gradient(145deg,#fff7e7,#f2dfbd); cursor: pointer; overflow: hidden; }
+.product-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.product-card-image.no-image img { display: none; }
+.product-card-placeholder { font-size: 56px; }
+.product-card-body { display: grid; gap: 5px; padding: 11px; }
+.product-card-name { padding: 0; border: 0; background: transparent; color: var(--deep); font: inherit; font-weight: 800; text-align: left; cursor: pointer; line-height: 1.25; }
+.product-card-name:hover { color: var(--brand); }
+.product-card-unit { color: var(--mute); font-size: 12px; }
+.product-card-prices { display: flex; align-items: baseline; gap: 7px; color: var(--brand); }
+.product-card-prices strong { font-size: 17px; }
+.product-card-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
+.product-card-actions > b { color: var(--deep); font-size: 13px; }
+.tbl { display: none; }
+@media (max-width: 460px) { .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; } .product-card-image { height: 125px; } .product-card-body { padding: 9px; } .product-card-name { font-size: 13px; } }
+.admin-page[data-admin-tab="overview"] .admin-rate-panel,
+.admin-page[data-admin-tab="orders"] .admin-rate-panel,
+.admin-page[data-admin-tab="stock"] .admin-rate-panel { display: none; }
+.admin-page[data-admin-tab="rates"] .admin-stats-grid,
+.admin-page[data-admin-tab="rates"] .admin-insights-grid,
+.admin-page[data-admin-tab="rates"] .admin-stock-panel,
+.admin-page[data-admin-tab="rates"] .admin-filters-bar,
+.admin-page[data-admin-tab="rates"] .admin-orders-list,
+.admin-page[data-admin-tab="rates"] .admin-filters-bar ~ .empty,
+.admin-page[data-admin-tab="rates"] .admin-filters-bar ~ .err { display: none; }
+@media (max-width: 800px) { .admin-add-product { grid-template-columns: 1fr 1fr; } .admin-add-product h3 { grid-column: 1/-1; } }
+@media (max-width: 900px) { .admin-rate-row { grid-template-columns: 1fr 1fr; } .admin-rate-row > label:first-child, .admin-rate-row > .admin-image-field { grid-column: 1/-1; } .admin-rate-row button { width: 100%; } }
+@media (max-width: 640px) { .inventory-summary-grid { grid-template-columns: 1fr; } }
 
 @media (max-width: 640px) {
 	header {

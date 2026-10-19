@@ -12,7 +12,13 @@ import {
   logOutAdmin,
   subscribeToAuth,
   isUserAdmin,
-  ADMIN_EMAILS
+  ADMIN_EMAILS,
+  updateProductDetails,
+  createProduct,
+  renameProduct,
+  updateProductActive,
+  loadInventory,
+  updateInventory
 } from "./firebase";
 import PRODUCT_IMAGE_MANIFEST from "./productImages.json";
 let DISC = 0.2; // 20% off the listed price
@@ -291,7 +297,7 @@ export default function App() {
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
   const [step, setStep] = useState("list");
-  const [f, setF] = useState({ state: "", city: "", name: "", mobile: "", email: "", address: "" });
+  const [f, setF] = useState({ state: "", city: "", name: "", mobile: "", email: "", address: "", shop: "Tadas Cross" });
   const [touched, setTouched] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productImage, setProductImage] = useState(null);
@@ -312,6 +318,13 @@ export default function App() {
   const [adminSort, setAdminSort] = useState("date_desc");
   const [stockDrafts, setStockDrafts] = useState({});
   const [stockSaving, setStockSaving] = useState("");
+  const [rateDrafts, setRateDrafts] = useState({});
+  const [rateSaving, setRateSaving] = useState("");
+  const [newProduct, setNewProduct] = useState({ name: "", customerName: "", variant: "", category: "", unit: "1 Box", price: "", offerPrice: "", imageUrl: "", emoji: "🎆", net: false, itemsPerCase: 1 });
+  const [productSaving, setProductSaving] = useState(false);
+  const [inventoryRecords, setInventoryRecords] = useState([]);
+  const [inventoryDrafts, setInventoryDrafts] = useState({});
+  const [inventorySaving, setInventorySaving] = useState("");
   const [adminNotes, setAdminNotes] = useState({});
   const [adminTab, setAdminTab] = useState("overview");
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -337,6 +350,12 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!currentUser || !isUserAdmin(currentUser)) return;
+    loadRates({ includeInactive: true }).then(r => { if (r?.cats) setData(r.cats); }).catch(() => {});
+    loadInventory().then(setInventoryRecords).catch(() => {});
+  }, [currentUser]);
 
   const handleGoogleLogin = async () => {
     setSigningIn(true);
@@ -573,13 +592,112 @@ export default function App() {
       await updateProductStock(item[0], draft.quantity ?? item[5] ?? 0, draft.threshold ?? item[6] ?? 5);
       const savedQuantity = Number(draft.quantity ?? item[5] ?? 0) || 0;
       const savedThreshold = Number(draft.threshold ?? item[6] ?? 5) || 5;
-      setData(prev => prev.map(category => ({ ...category, items: category.items.map(row => row[0] === item[0] ? [...row.slice(0, 5), savedQuantity, savedThreshold] : row) })));
+      setData(prev => prev.map(category => ({ ...category, items: category.items.map(row => row[0] === item[0] ? [...row.slice(0, 5), savedQuantity, savedThreshold, row[7], row[8], row[9], row[10]] : row) })));
       setActionToast({ type: "success", text: `${item[0]} stock updated.` });
       setTimeout(() => setActionToast(null), 3000);
     } catch (err) {
       setActionToast({ type: "error", text: `Stock update failed: ${err.message}` });
     } finally { setStockSaving(""); }
   };
+  const updateRateDraft = (name, field, value) => setRateDrafts(prev => ({ ...prev, [name]: { ...(prev[name] || {}), [field]: value } }));
+  const toggleProductActive = async item => {
+    const active = item[7] !== false;
+    setRateSaving(item[0]);
+    try {
+      await updateProductActive(item[0], !active);
+      setData(prev => prev.map(group => ({ ...group, items: group.items.map(row => row[0] === item[0] ? [...row.slice(0, 7), !active, row[8], row[9], row[10]] : row) })));
+      setActionToast({ type: "success", text: `${item[0]} is now ${!active ? "active" : "inactive"}.` });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err) { setActionToast({ type: "error", text: `Status update failed: ${err.message}` }); }
+    finally { setRateSaving(""); }
+  };
+  const saveRate = async item => {
+    const draft = rateDrafts[item[0]] || {};
+    const oldName = item[0];
+    const productName = String(draft.name ?? oldName).trim();
+    const price = draft.price ?? item[2] ?? 0;
+    const offerPrice = draft.offerPrice ?? (item[4] ?? "");
+    const imageUrl = draft.imageUrl ?? (item[3] ?? "");
+    const itemsPerCase = draft.itemsPerCase ?? item[8] ?? 1;
+    const customerName = String(draft.customerName ?? item[10] ?? productName).trim() || productName;
+    const currentCategory = DATA.find(group => group.items.some(row => row[0] === item[0]))?.name || "General";
+    const category = String(draft.category ?? currentCategory).trim() || currentCategory;
+    setRateSaving(item[0]);
+    try {
+      if (!productName) throw new Error("Product name is required.");
+      if (productName !== oldName) await renameProduct(oldName, productName);
+      await updateProductDetails(productName, { price, offerPrice, category, imageUrl, itemsPerCase, customerName });
+      const savedPrice = Number(price) || 0;
+      const savedOffer = offerPrice === "" ? undefined : Number(offerPrice);
+      setData(prev => {
+        const updatedRow = [productName, item[1], savedPrice, imageUrl || undefined, savedOffer, item[5], item[6], item[7], Math.max(1, Number(itemsPerCase) || 1), item[9], customerName];
+        let added = false;
+        const groups = prev.map(group => {
+          const hasItem = group.items.some(row => row[0] === oldName);
+          if (group.name === category) {
+            added = true;
+            return { ...group, items: [...group.items.filter(row => row[0] !== oldName), updatedRow] };
+          }
+          return hasItem ? { ...group, items: group.items.filter(row => row[0] !== oldName) } : group;
+        }).filter(group => group.items.length || group.name === category);
+        return added ? groups : [...groups, { id: `c${groups.length}`, name: category, emoji: "🎆", net: false, items: [updatedRow] }];
+      });
+      setActionToast({ type: "success", text: `${item[0]} rate updated.` });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err) {
+      setActionToast({ type: "error", text: `Rate update failed: ${err.message}` });
+    } finally { setRateSaving(""); }
+  };
+  const handleCreateProduct = async event => {
+    event.preventDefault();
+    setProductSaving(true);
+    try {
+      const created = await createProduct(newProduct);
+      const row = [created.name, created.unit, created.price, created.imageUrl, created.offerPrice, 0, 5, true, created.itemsPerCase, created.variant, created.customerName];
+      setData(prev => {
+        const index = prev.findIndex(group => group.name === created.category);
+        if (index < 0) return [...prev, { id: `c${prev.length}`, name: created.category, emoji: created.emoji, net: created.net, items: [row] }];
+        return prev.map((group, i) => i === index ? { ...group, items: [...group.items, row] } : group);
+      });
+      setNewProduct({ name: "", customerName: "", variant: "", category: "", unit: "1 Box", price: "", offerPrice: "", imageUrl: "", emoji: "🎆", net: false, itemsPerCase: 1 });
+      setActionToast({ type: "success", text: `${created.name} added to ${created.category}.` });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err) { setActionToast({ type: "error", text: `Product add failed: ${err.message}` }); }
+    finally { setProductSaving(false); }
+  };
+  const shops = ["Tadas Cross", "Shiggaon"];
+  const inventoryKey = (name, shop) => `${name}--${shop}`;
+  const updateInventoryDraft = (key, field, value) => setInventoryDrafts(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [field]: value } }));
+  const saveInventoryRow = async (name, shop) => {
+    const key = inventoryKey(name, shop);
+    const existing = inventoryRecords.find(record => record.productName === name && record.shop === shop) || {};
+    const draft = inventoryDrafts[key] || {};
+    setInventorySaving(key);
+    try {
+      const saved = await updateInventory(name, shop, draft.cases ?? existing.casesReceived ?? 0, draft.pieces ?? existing.piecesReceived ?? 0, draft.pendingCases ?? existing.pendingCases ?? existing.casesReceived ?? 0, draft.pendingPieces ?? existing.pendingPieces ?? existing.piecesReceived ?? 0);
+      setInventoryRecords(prev => [...prev.filter(record => !(record.productName === name && record.shop === shop)), saved]);
+      setActionToast({ type: "success", text: `${name} inventory updated for ${shop}.` });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err) { setActionToast({ type: "error", text: `Inventory update failed: ${err.message}` }); }
+    finally { setInventorySaving(""); }
+  };
+  const soldForInventory = (name, shop) => adminOrders.reduce((total, order) => {
+    const orderShop = order.shop || "Tadas Cross";
+    if (orderShop !== shop || !["confirmed", "dispatched", "delivered"].includes(order.status)) return total;
+    return total + (order.items || []).filter(item => item.name === name).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+  }, 0);
+  const inventorySummary = useMemo(() => DATA.flatMap(group => group.items).reduce((summary, item) => {
+    const perCase = Number(item[8]) || 1;
+    shops.forEach(shop => {
+      const record = inventoryRecords.find(row => row.productName === item[0] && row.shop === shop) || {};
+      const received = (Number(record.casesReceived) || 0) * perCase + (Number(record.piecesReceived) || 0);
+      const pending = (Number(record.pendingCases ?? record.casesReceived) || 0) * perCase + (Number(record.pendingPieces ?? record.piecesReceived) || 0);
+      summary.received += received;
+      summary.pending += pending;
+      summary.sold += Math.max(0, received - pending);
+    });
+    return summary;
+  }, { received: 0, pending: 0, sold: 0 }), [DATA, inventoryRecords, adminOrders]);
   const saveAdminNote = async order => {
     const note = adminNotes[order.id] ?? order.adminNote ?? "";
     try {
@@ -657,9 +775,9 @@ export default function App() {
   }, [selectedProduct]);
   const setQty = (k, n) => setCart(c => { const x = { ...c }; if (n) x[k] = n; else delete x[k]; return x; });
 
-  const lines = useMemo(() => DATA.flatMap(c => c.items.map(([n, u, p]) => {
-    const k = c.id + "|" + n, qn = cart[k] || 0, o = offer(c, p);
-    return { k, n, u, qn, p, o, c };
+  const lines = useMemo(() => DATA.flatMap(c => c.items.filter(item => item[7] !== false).map(([n, u, p, imageUrl, offerPrice, stock, threshold, active, perCase, variant, customerName]) => {
+    const k = c.id + "|" + n, qn = cart[k] || 0, o = offer(c, p, offerPrice);
+    return { k, n: customerName || n, productName: n, u, qn, p, o, c };
   })).filter(l => l.qn), [cart, DATA]);
   const actual = lines.reduce((s, l) => s + l.p * l.qn, 0);
   const net = lines.reduce((s, l) => s + l.o * l.qn, 0);
@@ -667,9 +785,15 @@ export default function App() {
   const pack = Math.round(net * 0.03), total = net + pack;
   const min = MIN[f.state] || 1000;
 
-  const shown = DATA.filter(c => cat === "all" || c.id === cat).map(c => ({
-    ...c, items: c.items.filter(i => i[0].toLowerCase().includes(q.toLowerCase()))
-  })).filter(c => c.items.length);
+  const shown = DATA.filter(c => cat === "all" || c.id === cat).map(c => {
+    const seen = new Set();
+    return { ...c, items: c.items.filter(i => {
+      const displayName = i[10] || i[0];
+      if (i[7] === false || !displayName.toLowerCase().includes(q.toLowerCase()) || seen.has(displayName)) return false;
+      seen.add(displayName);
+      return true;
+    }) };
+  }).filter(c => c.items.length);
 
   const errs = {};
   if (!f.state) errs.state = "Select a state";
@@ -689,8 +813,9 @@ export default function App() {
     setSavingOrder(true);
     try {
       const id = await saveOrder({
+        shop: f.shop,
         customer: { name: f.name.trim(), mobile: f.mobile, email: f.email.trim(), city: f.city.trim(), state: f.state, address: f.address.trim() },
-        items: lines.map(l => ({ name: l.n, unit: l.u, quantity: l.qn, unitPrice: l.o, total: l.o * l.qn })),
+        items: lines.map(l => ({ name: l.productName, displayName: l.n, unit: l.u, quantity: l.qn, unitPrice: l.o, total: l.o * l.qn })),
         net,
         packing: pack,
         savings: save,
@@ -856,12 +981,23 @@ export default function App() {
           {shown.map(c => (
             <section key={c.id}>
               <h2 className="cat">{c.emoji} {c.name} <small>{c.net ? "NET RATE" : c.items.some(item => item[4] != null) ? "SPECIAL OFFERS" : Math.round(DISC * 100) + "% OFF"}</small></h2>
+              <div className="product-grid">{c.items.map(([n, u, p, imageUrl, offerPrice, stock, threshold, active, perCase, variant, customerName]) => {
+                const k = c.id + "|" + n, v = cart[k] || 0, o = offer(c, p, offerPrice);
+                const displayName = customerName || n;
+                return <article className="product-card" key={`card-${k}`}>
+                  <button className="product-card-image" type="button" onClick={() => showProductImage(displayName, u, o, c.emoji, imageUrl)} title={`View ${displayName} image`}>
+                    {imageUrl ? <img src={imageUrl} alt={displayName} loading="lazy" onError={e => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.classList.add("no-image"); }} /> : <span className="product-card-placeholder">{c.emoji}</span>}
+                  </button>
+                  <div className="product-card-body"><button className="product-card-name" type="button" onClick={() => showProductImage(displayName, u, o, c.emoji, imageUrl)}>{displayName}</button><span className="product-card-unit">{u}</span><div className="product-card-prices">{!c.net && <span className="old">{inr(p)}</span>}<strong>{inr(o)}</strong></div><div className="product-card-actions"><Qty v={v} set={n2 => setQty(k, n2)} />{v > 0 && <b>{inr(v * o)}</b>}</div></div>
+                </article>;
+              })}</div>
               <div className="tbl"><table>
                 <thead><tr><th></th><th>Product</th><th>Content</th><th>Actual</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead>
-                <tbody>{c.items.map(([n, u, p, imageUrl, offerPrice]) => {
+                <tbody>{c.items.map(([n, u, p, imageUrl, offerPrice, stock, threshold, active, perCase, variant, customerName]) => {
                   const k = c.id + "|" + n, v = cart[k] || 0, o = offer(c, p, offerPrice);
+                  const displayName = customerName || n;
                   return <tr key={k}>
-                    <td className="em">{c.emoji}</td><td><button className="product-image-trigger" type="button" onClick={() => showProductImage(n, u, o, c.emoji, imageUrl)} title={`View ${n} image`}>{n}</button></td><td>{u}</td>
+                    <td className="em">{c.emoji}</td><td><button className="product-image-trigger" type="button" onClick={() => showProductImage(displayName, u, o, c.emoji, imageUrl)} title={`View ${displayName} image`}>{displayName}</button></td><td>{u}</td>
                     <td className={c.net ? "" : "old"}>{c.net ? "—" : inr(p)}</td><td className="price">{inr(o)}</td>
                     <td><Qty v={v} set={n2 => setQty(k, n2)} /></td><td><b>{v ? inr(v * o) : ""}</b></td>
                   </tr>;
@@ -1154,6 +1290,7 @@ export default function App() {
           <div className="panel">
             <div className="mins">{Object.entries(MIN).map(([s, a]) => <span key={s}>{s}: <b>{inr(a)}</b></span>)}</div>
             <div className="grid">
+              <div><label>Shop *</label><select value={f.shop} onChange={upd("shop")}><option>Tadas Cross</option><option>Shiggaon</option></select></div>
               <div><label>State *</label><select value={f.state} onChange={upd("state")}><option value="">Select State</option>{Object.keys(MIN).map(s => <option key={s}>{s}</option>)}</select><Err k="state" /></div>
               <div><label>City *</label><input value={f.city} onChange={upd("city")} placeholder="e.g. Bengaluru" /><Err k="city" /></div>
               <div><label>Name *</label><input value={f.name} onChange={upd("name")} /><Err k="name" /></div>
@@ -1346,10 +1483,14 @@ export default function App() {
             )}
 
             <div className="admin-tabs" role="tablist" aria-label="Admin functions">
+              <button type="button" role="tab" aria-selected={adminTab === "rates"} className={adminTab === "rates" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("rates"); document.getElementById("admin-rates")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>💰 Update Rates</button>
+              <button type="button" role="tab" aria-selected={adminTab === "inventory"} className={adminTab === "inventory" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("inventory"); document.getElementById("admin-inventory")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>📦 Inventory</button>
               {[['overview', '📊 Overview', 'admin-overview'], ['orders', '📜 Orders & Tracking', 'admin-orders'], ['stock', '📦 Stock', 'admin-stock']].map(([id, label, target]) => (
                 <button key={id} type="button" role="tab" aria-selected={adminTab === id} className={adminTab === id ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab(id); document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</button>
               ))}
             </div>
+
+            <button type="button" role="tab" aria-selected={adminTab === "rates"} className={adminTab === "rates" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("rates"); document.getElementById("admin-rates")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>💰 Update Rates</button>
 
             <div className="admin-stats-grid" id="admin-overview">
               <div className="admin-stat-card">
@@ -1412,6 +1553,79 @@ export default function App() {
                 })}
               </div>
             </details>
+
+            <section className="admin-rate-panel" id="admin-rates">
+              <div className="admin-rate-header">
+                <div><h2>💰 Update Product Rates</h2><p>Changes are saved to Firebase and used by the storefront after refresh.</p></div>
+              </div>
+              <form className="admin-add-product" onSubmit={handleCreateProduct}>
+                <h3>Add New Product</h3>
+                <input required placeholder="Internal product / variant ID" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} />
+                <input placeholder="Customer display name (e.g. 30 Shots)" value={newProduct.customerName} onChange={e => setNewProduct({ ...newProduct, customerName: e.target.value })} />
+                <input placeholder="Variant label (admin only)" value={newProduct.variant} onChange={e => setNewProduct({ ...newProduct, variant: e.target.value })} />
+                <input required placeholder="Category" list="product-categories" value={newProduct.category} onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} />
+                <datalist id="product-categories">{DATA.map(group => <option key={group.name} value={group.name} />)}</datalist>
+                <input placeholder="Unit (e.g. 1 Box)" value={newProduct.unit} onChange={e => setNewProduct({ ...newProduct, unit: e.target.value })} />
+                <input required type="number" min="0" step="1" placeholder="Listed rate" value={newProduct.price} onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} />
+                <input type="number" min="0" step="1" placeholder="Offer rate (optional)" value={newProduct.offerPrice} onChange={e => setNewProduct({ ...newProduct, offerPrice: e.target.value })} />
+                <input required type="number" min="1" step="1" placeholder="Items per case" value={newProduct.itemsPerCase} onChange={e => setNewProduct({ ...newProduct, itemsPerCase: e.target.value })} />
+                <input placeholder="Image URL (optional)" value={newProduct.imageUrl} onChange={e => setNewProduct({ ...newProduct, imageUrl: e.target.value })} />
+                <button className="btn" type="submit" disabled={productSaving}>{productSaving ? "Adding…" : "Add Product"}</button>
+              </form>
+              <div className="admin-rate-list">
+                {DATA.flatMap(category => category.items.map(item => ({ category: category.name, item }))).map(({ category, item }) => {
+                  const draft = rateDrafts[item[0]] || {};
+                  const productName = draft.name ?? item[0];
+                  const price = draft.price ?? item[2] ?? 0;
+                  const offerPrice = draft.offerPrice ?? (item[4] ?? "");
+                  const imageUrl = draft.imageUrl ?? (item[3] ?? "");
+                  const active = item[7] !== false;
+                  const itemsPerCase = draft.itemsPerCase ?? item[8] ?? 1;
+                  const customerName = draft.customerName ?? item[10] ?? item[0];
+                  const variant = item[9] || "";
+                  return <div className="admin-rate-row" key={item[0]}>
+                    <label>Internal name<input value={productName} onChange={e => updateRateDraft(item[0], "name", e.target.value)} /></label>
+                    <label>Customer name<input value={customerName} onChange={e => updateRateDraft(item[0], "customerName", e.target.value)} /></label>
+                    <div className="admin-variant-label"><b>{variant || "Standard"}</b><small>Variant (admin)</small></div>
+                    <label className="admin-image-field">Image URL<input placeholder="https://… or product-images/file.jpg" value={imageUrl} onChange={e => updateRateDraft(item[0], "imageUrl", e.target.value)} />{imageUrl && <img src={imageUrl} alt={`${productName} preview`} onError={e => { e.currentTarget.style.display = "none"; }} />}</label>
+                    <label>Category<input list="product-categories" value={draft.category ?? category} onChange={e => updateRateDraft(item[0], "category", e.target.value)} /></label>
+                    <label>Listed rate<input type="number" min="0" step="1" value={price} onChange={e => updateRateDraft(item[0], "price", e.target.value)} /></label>
+                    <label>Offer rate<input type="number" min="0" step="1" placeholder="Automatic discount" value={offerPrice} onChange={e => updateRateDraft(item[0], "offerPrice", e.target.value)} /></label>
+                    <label>Items / case<input type="number" min="1" step="1" value={itemsPerCase} onChange={e => updateRateDraft(item[0], "itemsPerCase", e.target.value)} /></label>
+                    <button className="btn alt" type="button" disabled={rateSaving === item[0]} onClick={() => saveRate(item)}>{rateSaving === item[0] ? "Saving…" : "Save"}</button>
+                    <button className={active ? "btn danger" : "btn"} type="button" disabled={rateSaving === item[0]} onClick={() => toggleProductActive(item)}>{active ? "Make Inactive" : "Make Active"}</button>
+                  </div>;
+                })}
+              </div>
+            </section>
+
+            <section className="admin-inventory-panel" id="admin-inventory">
+              <div className="admin-rate-header"><h2>📦 Shop Inventory</h2><p>Sold = total received − total pending. Pending totals use pending cases × items per case + pending pieces.</p></div>
+              <div className="inventory-summary-grid">
+                <div className="admin-stat-card"><div className="admin-stat-label">Total Received</div><div className="admin-stat-val">{inventorySummary.received}</div><div className="admin-stat-sub">All shops combined</div></div>
+                <div className="admin-stat-card"><div className="admin-stat-label">Total Pending</div><div className="admin-stat-val" style={{ color: "var(--brand)" }}>{inventorySummary.pending}</div><div className="admin-stat-sub">Cases converted to pieces</div></div>
+                <div className="admin-stat-card"><div className="admin-stat-label">Total Sold</div><div className="admin-stat-val" style={{ color: "var(--ok)" }}>{inventorySummary.sold}</div><div className="admin-stat-sub">Received minus pending</div></div>
+              </div>
+              {shops.map(shop => <div className="inventory-shop" key={shop}>
+                <h3>{shop}</h3>
+                <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Product</th><th>Items / case</th><th>Received cases</th><th>Received pieces</th><th>Pending cases</th><th>Pending pieces</th><th>Total received</th><th>Total pending</th><th>Sold</th><th></th></tr></thead><tbody>
+                  {DATA.flatMap(group => group.items.map(item => ({ group, item }))).map(({ item }) => {
+                    const key = inventoryKey(item[0], shop);
+                    const record = inventoryRecords.find(row => row.productName === item[0] && row.shop === shop) || {};
+                    const draft = inventoryDrafts[key] || {};
+                    const cases = Number(draft.cases ?? record.casesReceived ?? 0) || 0;
+                    const pieces = Number(draft.pieces ?? record.piecesReceived ?? 0) || 0;
+                    const pendingCases = Number(draft.pendingCases ?? record.pendingCases ?? cases) || 0;
+                    const pendingPieces = Number(draft.pendingPieces ?? record.pendingPieces ?? pieces) || 0;
+                    const perCase = Number(item[8]) || 1;
+                    const totalReceived = cases * perCase + pieces;
+                    const totalPending = pendingCases * perCase + pendingPieces;
+                    const sold = Math.max(0, totalReceived - totalPending);
+                    return <tr key={key}><td><b>{item[0]}</b><small>{item[1]}</small></td><td>{perCase}</td><td><input type="number" min="0" value={cases} onChange={e => updateInventoryDraft(key, "cases", e.target.value)} /></td><td><input type="number" min="0" value={pieces} onChange={e => updateInventoryDraft(key, "pieces", e.target.value)} /></td><td><input type="number" min="0" value={pendingCases} onChange={e => updateInventoryDraft(key, "pendingCases", e.target.value)} /></td><td><input type="number" min="0" value={pendingPieces} onChange={e => updateInventoryDraft(key, "pendingPieces", e.target.value)} /></td><td>{totalReceived}</td><td><strong>{totalPending}</strong></td><td><strong>{sold}</strong></td><td><button className="btn alt" type="button" disabled={inventorySaving === key} onClick={() => saveInventoryRow(item[0], shop)}>{inventorySaving === key ? "Saving…" : "Save"}</button></td></tr>;
+                  })}
+                </tbody></table></div>
+              </div>)}
+            </section>
 
             <div className="admin-filters-bar" id="admin-orders">
               <input

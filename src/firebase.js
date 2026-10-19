@@ -10,6 +10,8 @@ import {
   query,
   where,
   updateDoc,
+  setDoc,
+  deleteDoc,
   getDocFromServer
 } from "firebase/firestore";
 import {
@@ -74,7 +76,7 @@ export function isUserAdmin(user) {
 }
 
 // Returns { cats, discount, minOrder } or null (no Firebase config / no products yet).
-export async function loadRates() {
+export async function loadRates(options = {}) {
   if (!cfg.projectId) return null;
   try {
     const [ps, st] = await Promise.all([
@@ -83,7 +85,7 @@ export async function loadRates() {
     ]);
     const rows = ps.docs
       .map(d => d.data())
-      .filter(p => p.active !== false)
+      .filter(p => options.includeInactive || p.active !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     if (!rows.length) return null;
     const cats = [];
@@ -99,7 +101,7 @@ export async function loadRates() {
         };
         cats.push(c);
       }
-      c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice, Number(p.stockQuantity) || 0, Number(p.lowStockThreshold) || 5]);
+      c.items.push([p.name, p.unit || "1 Box", Number(p.price) || 0, p.imageUrl, p.offerPrice, Number(p.stockQuantity) || 0, Number(p.lowStockThreshold) || 5, p.active !== false, Number(p.itemsPerCase) || 1, p.variant || "", p.customerName || p.name]);
     });
     cats.sort((a, b) => {
       if (a.name === "One Sound Crackers") return 1;
@@ -112,6 +114,27 @@ export async function loadRates() {
     console.warn("Failed to load rates from Firestore:", err);
     return null;
   }
+}
+
+export async function loadInventory() {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const snapshot = await getDocs(collection(db, "inventory"));
+  return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+}
+
+export async function updateInventory(productName, shop, casesReceived, piecesReceived, pendingCases, pendingPieces) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const productId = productDocumentId(productName);
+  const shopId = String(shop || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  if (!productId || !shopId) throw new Error("Product and shop are required.");
+  const cases = Math.max(0, Number(casesReceived) || 0);
+  const pieces = Math.max(0, Number(piecesReceived) || 0);
+  const casesPending = Math.max(0, Number(pendingCases) || 0);
+  const piecesPending = Math.max(0, Number(pendingPieces) || 0);
+  await setDoc(doc(db, "inventory", `${productId}--${shopId}`), {
+    productName, shop, casesReceived: cases, piecesReceived: pieces, pendingCases: casesPending, pendingPieces: piecesPending, updatedAt: serverTimestamp()
+  }, { merge: true });
+  return { productName, shop, casesReceived: cases, piecesReceived: pieces, pendingCases: casesPending, pendingPieces: piecesPending };
 }
 
 export async function saveOrder(order) {
@@ -285,6 +308,82 @@ export async function updateProductStock(productName, stockQuantity, lowStockThr
     stockQuantity: Math.max(0, Number(stockQuantity) || 0),
     lowStockThreshold: Math.max(0, Number(lowStockThreshold) || 0),
   });
+}
+
+export async function updateProductActive(productName, active) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const id = productDocumentId(productName);
+  if (!id) throw new Error("Product name is required.");
+  await updateDoc(doc(db, "products", id), { active: Boolean(active) });
+}
+
+function productDocumentId(productName) {
+  return String(productName || "")
+    .normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+export async function updateProductDetails(productName, { price, offerPrice, category, imageUrl, itemsPerCase, customerName }) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const id = productDocumentId(productName);
+  const listedPrice = Number(price);
+  if (!id || !Number.isFinite(listedPrice) || listedPrice < 0) throw new Error("A valid product rate is required.");
+  const parsedOffer = offerPrice === "" || offerPrice === null || offerPrice === undefined ? null : Number(offerPrice);
+  if (parsedOffer !== null && (!Number.isFinite(parsedOffer) || parsedOffer < 0)) throw new Error("Offer rate must be a valid positive number or blank.");
+  await updateDoc(doc(db, "products", id), {
+    price: listedPrice,
+    offerPrice: parsedOffer,
+    ...(category ? { category: String(category).trim() } : {}),
+    ...(imageUrl !== undefined ? { imageUrl: String(imageUrl || "").trim() || null } : {}),
+    ...(itemsPerCase !== undefined ? { itemsPerCase: Math.max(1, Number(itemsPerCase) || 1) } : {}),
+    ...(customerName !== undefined ? { customerName: String(customerName || productName).trim() || productName } : {}),
+  });
+}
+
+export async function renameProduct(oldName, newName) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const oldId = productDocumentId(oldName);
+  const newProductName = String(newName || "").trim();
+  const newId = productDocumentId(newProductName);
+  if (!oldId || !newId || !newProductName) throw new Error("A valid product name is required.");
+  if (oldId === newId) return;
+  const oldRef = doc(db, "products", oldId);
+  const oldSnapshot = await getDoc(oldRef);
+  if (!oldSnapshot.exists()) throw new Error("The original product was not found.");
+  const newRef = doc(db, "products", newId);
+  const existing = await getDoc(newRef);
+  if (existing.exists()) throw new Error("A product with that name already exists.");
+  await setDoc(newRef, { ...oldSnapshot.data(), name: newProductName });
+  await deleteDoc(oldRef);
+}
+
+export async function createProduct({ name, customerName, variant, category, unit, price, offerPrice, imageUrl, emoji, net, itemsPerCase }) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const productName = String(name || "").trim();
+  const productCategory = String(category || "").trim();
+  const id = productDocumentId(productName);
+  const listedPrice = Number(price);
+  if (!id || !productCategory || !Number.isFinite(listedPrice) || listedPrice < 0) throw new Error("Name, category, and a valid rate are required.");
+  const parsedOffer = offerPrice === "" || offerPrice === null || offerPrice === undefined ? null : Number(offerPrice);
+  if (parsedOffer !== null && (!Number.isFinite(parsedOffer) || parsedOffer < 0)) throw new Error("Offer rate must be a valid positive number or blank.");
+  await setDoc(doc(db, "products", id), {
+    name: productName,
+    customerName: String(customerName || productName).trim(),
+    variant: String(variant || "").trim(),
+    category: productCategory,
+    unit: String(unit || "1 Box").trim(),
+    price: listedPrice,
+    offerPrice: parsedOffer,
+    imageUrl: String(imageUrl || "").trim() || null,
+    emoji: String(emoji || "🎆"),
+    net: Boolean(net),
+    active: true,
+    order: Date.now(),
+    stockQuantity: 0,
+    lowStockThreshold: 5,
+    itemsPerCase: Math.max(1, Number(itemsPerCase) || 1),
+  });
+  return { id, name: productName, customerName: String(customerName || productName).trim(), variant: String(variant || "").trim(), category: productCategory, unit: String(unit || "1 Box").trim(), price: listedPrice, offerPrice: parsedOffer, imageUrl: String(imageUrl || "").trim() || undefined, emoji: String(emoji || "🎆"), net: Boolean(net), stockQuantity: 0, lowStockThreshold: 5, itemsPerCase: Math.max(1, Number(itemsPerCase) || 1) };
 }
 
 export async function confirmOrderAndDeductStock(order, updates = {}) {
