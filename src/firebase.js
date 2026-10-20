@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getFirestore,
   collection,
+  addDoc,
   doc,
   getDocs,
   getDoc,
@@ -35,6 +36,36 @@ export const app = getApps().length ? getApp() : initializeApp(cfg);
 // Orders live in the project's `(default)` Firestore database.
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+const analyticsSessionId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+export async function trackSiteEvent(eventName, details = {}) {
+  if (!cfg.projectId || !eventName) return;
+  try {
+    await addDoc(collection(db, "siteAnalytics"), {
+      event: String(eventName),
+      sessionId: analyticsSessionId,
+      path: window.location.pathname,
+      createdAt: serverTimestamp(),
+      ...details,
+    });
+  } catch (error) {
+    console.warn("Analytics event could not be saved:", error);
+  }
+}
+
+export async function loadAnalyticsSummary() {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  const snapshot = await getDocs(collection(db, "siteAnalytics"));
+  const counts = { view_product: 0, add_to_cart: 0, start_order: 0, submit_order: 0 };
+  const products = {};
+  snapshot.docs.forEach(item => {
+    const data = item.data();
+    if (counts[data.event] !== undefined) counts[data.event] += 1;
+    if (data.event === "view_product" && data.product) products[data.product] = (products[data.product] || 0) + 1;
+  });
+  return { counts, products: Object.entries(products).sort((a, b) => b[1] - a[1]).slice(0, 10), totalEvents: snapshot.size };
+}
 
 // Test connection on boot per skill instructions
 async function testConnection() {

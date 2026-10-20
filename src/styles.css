@@ -1907,6 +1907,8 @@ footer {
 .admin-page[data-admin-tab="stock"] .admin-filters-bar ~ .err { display: none; }
 .admin-rate-panel { margin-bottom: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 .admin-inventory-panel { margin-bottom: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.admin-analytics-panel { margin-bottom: 20px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.analytics-ranking { display: grid; gap: 2px; margin: 8px 0 16px; max-width: 640px; }
 .inventory-shop { margin-top: 18px; }
 .inventory-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 20px; }
 .inventory-shop h3 { margin: 0 0 8px; color: var(--deep); }
@@ -1920,6 +1922,11 @@ footer {
 .admin-page[data-admin-tab="orders"] .admin-inventory-panel,
 .admin-page[data-admin-tab="stock"] .admin-inventory-panel,
 .admin-page[data-admin-tab="rates"] .admin-inventory-panel { display: none; }
+.admin-page[data-admin-tab="overview"] .admin-analytics-panel,
+.admin-page[data-admin-tab="orders"] .admin-analytics-panel,
+.admin-page[data-admin-tab="stock"] .admin-analytics-panel,
+.admin-page[data-admin-tab="rates"] .admin-analytics-panel,
+.admin-page[data-admin-tab="inventory"] .admin-analytics-panel { display: none; }
 .admin-page[data-admin-tab="inventory"] .admin-stats-grid,
 .admin-page[data-admin-tab="inventory"] .admin-insights-grid,
 .admin-page[data-admin-tab="inventory"] .admin-stock-panel,
@@ -1928,6 +1935,15 @@ footer {
 .admin-page[data-admin-tab="inventory"] .admin-orders-list,
 .admin-page[data-admin-tab="inventory"] .admin-filters-bar ~ .empty,
 .admin-page[data-admin-tab="inventory"] .admin-filters-bar ~ .err { display: none; }
+.admin-page[data-admin-tab="analytics"] .admin-stats-grid,
+.admin-page[data-admin-tab="analytics"] .admin-insights-grid,
+.admin-page[data-admin-tab="analytics"] .admin-stock-panel,
+.admin-page[data-admin-tab="analytics"] .admin-rate-panel,
+.admin-page[data-admin-tab="analytics"] .admin-inventory-panel,
+.admin-page[data-admin-tab="analytics"] .admin-filters-bar,
+.admin-page[data-admin-tab="analytics"] .admin-orders-list,
+.admin-page[data-admin-tab="analytics"] .admin-filters-bar ~ .empty,
+.admin-page[data-admin-tab="analytics"] .admin-filters-bar ~ .err { display: none; }
 .admin-tabs + .admin-tab { display: none; }
 .admin-rate-header h2 { margin: 0 0 4px; color: var(--deep); }
 .admin-rate-header p { margin: 0 0 12px; color: var(--mute); font-size: 13px; }

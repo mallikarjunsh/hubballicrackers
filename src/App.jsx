@@ -18,7 +18,9 @@ import {
   renameProduct,
   updateProductActive,
   loadInventory,
-  updateInventory
+  updateInventory,
+  trackSiteEvent,
+  loadAnalyticsSummary
 } from "./firebase";
 import PRODUCT_IMAGE_MANIFEST from "./productImages.json";
 let DISC = 0.2; // 20% off the listed price
@@ -325,6 +327,7 @@ export default function App() {
   const [inventoryRecords, setInventoryRecords] = useState([]);
   const [inventoryDrafts, setInventoryDrafts] = useState({});
   const [inventorySaving, setInventorySaving] = useState("");
+  const [analyticsSummary, setAnalyticsSummary] = useState({ counts: {}, products: [], totalEvents: 0 });
   const [adminNotes, setAdminNotes] = useState({});
   const [adminTab, setAdminTab] = useState("overview");
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -355,6 +358,7 @@ export default function App() {
     if (!currentUser || !isUserAdmin(currentUser)) return;
     loadRates({ includeInactive: true }).then(r => { if (r?.cats) setData(r.cats); }).catch(() => {});
     loadInventory().then(setInventoryRecords).catch(() => {});
+    loadAnalyticsSummary().then(setAnalyticsSummary).catch(() => {});
   }, [currentUser]);
 
   const handleGoogleLogin = async () => {
@@ -773,7 +777,7 @@ export default function App() {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [selectedProduct]);
-  const setQty = (k, n) => setCart(c => { const x = { ...c }; if (n) x[k] = n; else delete x[k]; return x; });
+  const setQty = (k, n) => { if (n > 0) trackSiteEvent("add_to_cart", { productKey: k }); setCart(c => { const x = { ...c }; if (n) x[k] = n; else delete x[k]; return x; }); };
 
   const lines = useMemo(() => DATA.flatMap(c => c.items.filter(item => item[7] !== false).map(([n, u, p, imageUrl, offerPrice, stock, threshold, active, perCase, variant, customerName]) => {
     const k = c.id + "|" + n, qn = cart[k] || 0, o = offer(c, p, offerPrice);
@@ -822,6 +826,7 @@ export default function App() {
         total,
       });
       setOrderId(id);
+      trackSiteEvent("submit_order");
       setSent(msg(id));
       setStep("done");
       setCart({});
@@ -927,6 +932,7 @@ export default function App() {
     }, 80);
   };
   const showProductImage = (name, unit, price, emoji, imageUrl) => {
+    trackSiteEvent("view_product", { product: name });
     const preferredImage = LOCAL_PRODUCT_IMAGES[name] || imageUrl;
     const image = imageUrl === undefined && !preferredImage
       ? PRODUCT_IMAGES[name]
@@ -1485,6 +1491,7 @@ export default function App() {
             <div className="admin-tabs" role="tablist" aria-label="Admin functions">
               <button type="button" role="tab" aria-selected={adminTab === "rates"} className={adminTab === "rates" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("rates"); document.getElementById("admin-rates")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>💰 Update Rates</button>
               <button type="button" role="tab" aria-selected={adminTab === "inventory"} className={adminTab === "inventory" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("inventory"); document.getElementById("admin-inventory")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>📦 Inventory</button>
+              <button type="button" role="tab" aria-selected={adminTab === "analytics"} className={adminTab === "analytics" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("analytics"); document.getElementById("admin-analytics")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>📈 Site Analytics</button>
               {[['overview', '📊 Overview', 'admin-overview'], ['orders', '📜 Orders & Tracking', 'admin-orders'], ['stock', '📦 Stock', 'admin-stock']].map(([id, label, target]) => (
                 <button key={id} type="button" role="tab" aria-selected={adminTab === id} className={adminTab === id ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab(id); document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</button>
               ))}
@@ -1597,6 +1604,19 @@ export default function App() {
                   </div>;
                 })}
               </div>
+            </section>
+
+            <section className="admin-analytics-panel" id="admin-analytics">
+              <div className="admin-rate-header"><h2>📈 Site Analytics</h2><p>Anonymous interaction counts saved in Firestore.</p></div>
+              <div className="inventory-summary-grid">
+                <div className="admin-stat-card"><div className="admin-stat-label">Product Views</div><div className="admin-stat-val">{analyticsSummary.counts.view_product || 0}</div></div>
+                <div className="admin-stat-card"><div className="admin-stat-label">Added to Cart</div><div className="admin-stat-val">{analyticsSummary.counts.add_to_cart || 0}</div></div>
+                <div className="admin-stat-card"><div className="admin-stat-label">Order Starts</div><div className="admin-stat-val">{analyticsSummary.counts.start_order || 0}</div></div>
+                <div className="admin-stat-card"><div className="admin-stat-label">Orders Submitted</div><div className="admin-stat-val" style={{ color: "var(--ok)" }}>{analyticsSummary.counts.submit_order || 0}</div></div>
+              </div>
+              <h3>Most Viewed Products</h3>
+              {analyticsSummary.products.length ? <div className="analytics-ranking">{analyticsSummary.products.map(([name, count]) => <div className="admin-ranking-row" key={name}><span>{name}</span><b>{count}</b></div>)}</div> : <p className="admin-stat-sub">No product view events recorded yet.</p>}
+              <button className="btn alt" type="button" onClick={() => loadAnalyticsSummary().then(setAnalyticsSummary)}>🔄 Refresh Analytics</button>
             </section>
 
             <section className="admin-inventory-panel" id="admin-inventory">
@@ -1994,7 +2014,7 @@ export default function App() {
         <div><span>Net Total</span><b>{inr(net)}</b></div>
         <div><span>You Save</span><b style={{ color: "var(--ok)" }}>{inr(save)}</b></div>
         <div><span>Overall</span><b>{inr(actual ? total : 0)}</b></div>
-        <button className="btn" disabled={!count} onClick={() => { setStep("form"); window.scrollTo(0, 0); }}>Confirm Estimate →</button>
+        <button className="btn" disabled={!count} onClick={() => { trackSiteEvent("start_order"); setStep("form"); window.scrollTo(0, 0); }}>Confirm Estimate →</button>
       </div>}
 
       <footer id="contact"><div className="wrap grid">
