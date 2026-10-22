@@ -110,7 +110,7 @@ The admin **Site Analytics** tab reads these records and shows event totals plus
 
 ## Deployment
 
-`.github/workflows/deploy.yml` builds the site, deploys GitHub Pages, and then deploys Firebase Hosting, Firestore rules, and Storage rules. Required GitHub configuration includes:
+`.github/workflows/deploy.yml` builds the site, deploys GitHub Pages, and then deploys Firebase Hosting and Firestore rules. Storage rules are deployed after Firebase Storage is initialized in the Firebase Console. Required GitHub configuration includes:
 
 - Repository variables: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`
 - Repository secret: `FIREBASE_TOKEN`

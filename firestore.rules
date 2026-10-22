@@ -8,6 +8,7 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == 'mallikarjun.hubballi@gmail.com' ||
         request.auth.token.email == 'mallikarjun.hubballi1@gmail.com' ||
+        request.auth.token.email == 'veereshhubballi789@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }

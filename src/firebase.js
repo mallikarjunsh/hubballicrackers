@@ -90,7 +90,8 @@ testConnection();
 // Authorized Admin Google Accounts
 export const ADMIN_EMAILS = [
   "mallikarjun.hubballi@gmail.com",
-  "mallikarjun.hubballi1@gmail.com"
+  "mallikarjun.hubballi1@gmail.com",
+  "veereshhubballi789@gmail.com"
 ];
 
 const googleProvider = new GoogleAuthProvider();

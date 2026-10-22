@@ -82,6 +82,9 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
 
       - name: Deploy to Firebase Hosting
-        run: npx firebase-tools deploy --only hosting,firestore:rules,storage --project hubballicrackers --token "$FIREBASE_TOKEN"
+        # Storage rules are deployed after Firebase Storage is initialized in
+        # the Firebase Console. Keeping them out of this step prevents an
+        # uninitialized Storage service from blocking the site deployment.
+        run: npx firebase-tools deploy --only hosting,firestore:rules --project hubballicrackers --token "$FIREBASE_TOKEN"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
