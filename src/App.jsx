@@ -17,6 +17,7 @@ import {
   createProduct,
   renameProduct,
   updateProductActive,
+  uploadProductImage,
   loadInventory,
   updateInventory,
   trackSiteEvent,
@@ -51,29 +52,33 @@ const LOCAL_PRODUCT_IMAGES = {
 // stable for this page session, so React re-renders do not trigger extra loads.
 const PRODUCT_IMAGE_REVISION = Date.now().toString();
 const pendingProductImages = new Map();
-const getCachedProductImage = source => {
-  let pending = pendingProductImages.get(source);
+const getCachedProductImage = (source, bypassCache = false) => {
+  const cacheKey = `${source}|${bypassCache ? "admin" : "customer"}`;
+  let pending = pendingProductImages.get(cacheKey);
   if (!pending) {
     pending = (async () => {
       const imageUrl = new URL(source, window.location.href);
-      imageUrl.searchParams.set("v", PRODUCT_IMAGE_REVISION);
+      if (!bypassCache) {
+        // Customer image previews use the browser's normal HTTP cache. The
+        // product URL changes when an image is replaced, so this stays fresh
+        // without issuing a second request on every open.
+        return { src: source, fromCache: true, cacheable: false };
+      }
       if (imageUrl.origin !== window.location.origin) {
-        await new Promise((resolve, reject) => {
-          const image = new Image();
-          image.onload = resolve;
-          image.onerror = () => reject(new Error("Image request failed"));
-          image.src = imageUrl.href;
-        });
+        // Let the browser render remote images directly. Preloading them with
+        // JavaScript triggers CORS checks that are unnecessary for an <img>.
+        imageUrl.searchParams.set("admin", Date.now().toString());
         return { src: imageUrl.href, fromCache: false, cacheable: false };
       }
+      imageUrl.searchParams.set("v", PRODUCT_IMAGE_REVISION);
       const response = await fetch(imageUrl.href, { cache: "no-store" });
       if (!response.ok) throw new Error("Image request failed");
       return { blob: await response.blob(), fromCache: false, cacheable: false };
-    })().finally(() => pendingProductImages.delete(source));
-    pendingProductImages.set(source, pending);
+    })().finally(() => pendingProductImages.delete(cacheKey));
+    pendingProductImages.set(cacheKey, pending);
   }
-  return pending.then(({ blob, fromCache, cacheable }) => ({
-    src: blob ? URL.createObjectURL(blob) : source,
+  return pending.then(({ src: resolvedSrc, blob, fromCache, cacheable }) => ({
+    src: blob ? URL.createObjectURL(blob) : resolvedSrc,
     fromCache,
     cacheable,
   }));
@@ -328,6 +333,11 @@ export default function App() {
   const [inventoryDrafts, setInventoryDrafts] = useState({});
   const [inventorySaving, setInventorySaving] = useState("");
   const [analyticsSummary, setAnalyticsSummary] = useState({ counts: {}, products: [], totalEvents: 0 });
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState("");
+  const [productEditor, setProductEditor] = useState(null);
+  const [productImageFile, setProductImageFile] = useState(null);
+  const [productEditorSaving, setProductEditorSaving] = useState(false);
   const [adminNotes, setAdminNotes] = useState({});
   const [adminTab, setAdminTab] = useState("overview");
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -340,6 +350,7 @@ export default function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [authError, setAuthError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
+  const viewedProductsRef = useRef(new Set());
 
   useEffect(() => {
     const unsubscribe = subscribeToAuth(user => {
@@ -358,7 +369,14 @@ export default function App() {
     if (!currentUser || !isUserAdmin(currentUser)) return;
     loadRates({ includeInactive: true }).then(r => { if (r?.cats) setData(r.cats); }).catch(() => {});
     loadInventory().then(setInventoryRecords).catch(() => {});
-    loadAnalyticsSummary().then(setAnalyticsSummary).catch(() => {});
+    setAnalyticsLoading(true);
+    setAnalyticsError("");
+    loadAnalyticsSummary()
+      .then(setAnalyticsSummary)
+      .catch(error => setAnalyticsError(error?.code === "permission-denied"
+        ? "Analytics access was denied. Deploy the latest firestore.rules and sign in with an authorized admin account."
+        : "Unable to load analytics from Firestore. Check the Firebase connection and try again."))
+      .finally(() => setAnalyticsLoading(false));
   }, [currentUser]);
 
   const handleGoogleLogin = async () => {
@@ -652,6 +670,72 @@ export default function App() {
       setActionToast({ type: "error", text: `Rate update failed: ${err.message}` });
     } finally { setRateSaving(""); }
   };
+  const openProductEditor = (item, category) => {
+    setProductImageFile(null);
+    setProductEditor({
+      oldName: item[0], name: item[0], customerName: item[10] || item[0], variant: item[9] || "",
+      category, unit: item[1] || "1 Box", price: item[2] ?? 0, offerPrice: item[4] ?? "",
+      imageUrl: item[3] || "", itemsPerCase: item[8] || 1, active: item[7] !== false,
+      stockQuantity: item[5] || 0, lowStockThreshold: item[6] ?? 5,
+    });
+  };
+  const updateProductEditor = (field, value) => setProductEditor(prev => ({ ...prev, [field]: value }));
+  const saveProductEditor = async () => {
+    if (!productEditor) return;
+    const oldName = productEditor.oldName;
+    const productName = String(productEditor.name || "").trim();
+    setProductEditorSaving(true);
+    try {
+      if (!productName) throw new Error("Product name is required.");
+      if (productName !== oldName) await renameProduct(oldName, productName);
+      let imageUrl = productEditor.imageUrl || "";
+      if (productImageFile) imageUrl = await uploadProductImage(productName, productImageFile, { saveToProduct: false, preferFirestore: ["localhost", "127.0.0.1"].includes(window.location.hostname) });
+      await updateProductDetails(productName, {
+        price: productEditor.price, offerPrice: productEditor.offerPrice,
+        category: productEditor.category, imageUrl,
+        itemsPerCase: productEditor.itemsPerCase, customerName: productEditor.customerName, unit: productEditor.unit,
+      });
+      const savedPrice = Number(productEditor.price) || 0;
+      const savedOffer = productEditor.offerPrice === "" ? undefined : Number(productEditor.offerPrice);
+      const savedRow = [productName, productEditor.unit || "1 Box", savedPrice, imageUrl || undefined, savedOffer, productEditor.stockQuantity || 0, productEditor.lowStockThreshold ?? 5, productEditor.active !== false, Math.max(1, Number(productEditor.itemsPerCase) || 1), productEditor.variant || "", String(productEditor.customerName || productName).trim() || productName];
+      setData(prev => {
+        let categoryFound = false;
+        const groups = prev.map(group => {
+          const containsOld = group.items.some(row => row[0] === oldName);
+          const withoutOld = group.items.filter(row => row[0] !== oldName);
+          if (group.name === productEditor.category) {
+            categoryFound = true;
+            return { ...group, items: [...withoutOld, savedRow] };
+          }
+          return containsOld ? { ...group, items: withoutOld } : group;
+        }).filter(group => group.items.length);
+        return categoryFound ? groups : [...groups, { id: `c${groups.length}`, name: productEditor.category, emoji: "🎆", net: false, items: [savedRow] }];
+      });
+      setProductEditor(prev => ({ ...prev, oldName: productName, name: productName, imageUrl }));
+      setProductImageFile(null);
+      setActionToast({ type: "success", text: `${productName} updated.` });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err) {
+      const message = String(err?.code || "").startsWith("storage/")
+        ? "Image upload failed. Check Firebase Storage setup/rules and try again."
+        : err.message;
+      setActionToast({ type: "error", text: `Product update failed: ${message}` });
+    } finally { setProductEditorSaving(false); }
+  };
+  const toggleEditorActive = async () => {
+    if (!productEditor) return;
+    const nextActive = !productEditor.active;
+    setProductEditorSaving(true);
+    try {
+      await updateProductActive(productEditor.oldName, nextActive);
+      setProductEditor(prev => ({ ...prev, active: nextActive }));
+      setData(prev => prev.map(group => ({ ...group, items: group.items.map(row => row[0] === productEditor.oldName ? [...row.slice(0, 7), nextActive, ...row.slice(8)] : row) })));
+      setActionToast({ type: "success", text: `${productEditor.oldName} is now ${nextActive ? "active" : "inactive"}.` });
+      setTimeout(() => setActionToast(null), 3000);
+    } catch (err) {
+      setActionToast({ type: "error", text: `Status update failed: ${err.message}` });
+    } finally { setProductEditorSaving(false); }
+  };
   const handleCreateProduct = async event => {
     event.preventDefault();
     setProductSaving(true);
@@ -759,13 +843,13 @@ export default function App() {
     let active = true, objectUrl;
     if (!selectedProduct.image) { setProductImage({ status: "missing" }); return; }
     setProductImage({ status: "loading" });
-    getCachedProductImage(selectedProduct.image).then(({ src, fromCache, cacheable }) => {
+    getCachedProductImage(selectedProduct.image, Boolean(currentUser && isUserAdmin(currentUser))).then(({ src, fromCache, cacheable }) => {
       objectUrl = src;
       if (active) setProductImage({ status: "loaded", src, fromCache, cacheable });
       else if (cacheable) URL.revokeObjectURL(src);
     }).catch(() => { if (active) setProductImage({ status: "error" }); });
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [selectedProduct]);
+  }, [selectedProduct, currentUser]);
   useEffect(() => {
     if (!selectedProduct) return;
     const previousOverflow = document.body.style.overflow;
@@ -777,7 +861,7 @@ export default function App() {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [selectedProduct]);
-  const setQty = (k, n) => { if (n > 0) trackSiteEvent("add_to_cart", { productKey: k }); setCart(c => { const x = { ...c }; if (n) x[k] = n; else delete x[k]; return x; }); };
+  const setQty = (k, n) => { if (n > 0 && !cart[k]) trackSiteEvent("add_to_cart", { productKey: k }); setCart(c => { const x = { ...c }; if (n) x[k] = n; else delete x[k]; return x; }); };
 
   const lines = useMemo(() => DATA.flatMap(c => c.items.filter(item => item[7] !== false).map(([n, u, p, imageUrl, offerPrice, stock, threshold, active, perCase, variant, customerName]) => {
     const k = c.id + "|" + n, qn = cart[k] || 0, o = offer(c, p, offerPrice);
@@ -932,7 +1016,10 @@ export default function App() {
     }, 80);
   };
   const showProductImage = (name, unit, price, emoji, imageUrl) => {
-    trackSiteEvent("view_product", { product: name });
+    if (!viewedProductsRef.current.has(name)) {
+      viewedProductsRef.current.add(name);
+      trackSiteEvent("view_product", { product: name });
+    }
     const preferredImage = LOCAL_PRODUCT_IMAGES[name] || imageUrl;
     const image = imageUrl === undefined && !preferredImage
       ? PRODUCT_IMAGES[name]
@@ -1489,6 +1576,7 @@ export default function App() {
             )}
 
             <div className="admin-tabs" role="tablist" aria-label="Admin functions">
+              <button type="button" role="tab" aria-selected={adminTab === "products"} className={adminTab === "products" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("products"); document.getElementById("admin-products")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>🛠️ Products</button>
               <button type="button" role="tab" aria-selected={adminTab === "rates"} className={adminTab === "rates" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("rates"); document.getElementById("admin-rates")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>💰 Update Rates</button>
               <button type="button" role="tab" aria-selected={adminTab === "inventory"} className={adminTab === "inventory" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("inventory"); document.getElementById("admin-inventory")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>📦 Inventory</button>
               <button type="button" role="tab" aria-selected={adminTab === "analytics"} className={adminTab === "analytics" ? "admin-tab active" : "admin-tab"} onClick={() => { setAdminTab("analytics"); document.getElementById("admin-analytics")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>📈 Site Analytics</button>
@@ -1561,6 +1649,36 @@ export default function App() {
               </div>
             </details>
 
+            <section className="admin-products-panel" id="admin-products">
+              <div className="admin-rate-header"><h2>🛠️ Product Manager</h2><p>Choose one product to update its name, customer label, category, rates, status, or image.</p></div>
+              <div className="admin-product-manager-layout">
+                <div className="admin-product-picker">
+                  {DATA.flatMap(group => group.items.map(item => ({ group, item }))).map(({ group, item }) => (
+                    <button type="button" className={`admin-product-tile${productEditor?.oldName === item[0] ? " selected" : ""}`} key={item[0]} onClick={() => openProductEditor(item, group.name)}>
+                      {item[3] ? <img src={item[3]} alt="" loading="lazy" /> : <span>{group.emoji}</span>}
+                      <b>{item[10] || item[0]}</b><small>{group.name}{item[7] === false ? " · Inactive" : ""}</small>
+                    </button>
+                  ))}
+                </div>
+                {productEditor ? <div className="admin-product-editor">
+                  <div className="admin-product-editor-heading"><div><h3>{productEditor.name}</h3><p>{productEditor.variant || "Standard product"}</p></div><span className={productEditor.active ? "status-pill active" : "status-pill inactive"}>{productEditor.active ? "Active" : "Inactive"}</span></div>
+                  <div className="admin-product-preview">{productEditor.imageUrl ? <img src={productEditor.imageUrl} alt={`${productEditor.name} preview`} onError={e => { e.currentTarget.style.display = "none"; }} /> : <span>🎆</span>}</div>
+                  <div className="admin-product-form-grid">
+                    <label>Product name<input value={productEditor.name} onChange={e => updateProductEditor("name", e.target.value)} /></label>
+                    <label>Customer display name<input value={productEditor.customerName} onChange={e => updateProductEditor("customerName", e.target.value)} /></label>
+                    <label>Category<input list="product-categories" value={productEditor.category} onChange={e => updateProductEditor("category", e.target.value)} /></label>
+                    <label>Unit<input value={productEditor.unit} onChange={e => updateProductEditor("unit", e.target.value)} /></label>
+                    <label>Listed rate<input type="number" min="0" value={productEditor.price} onChange={e => updateProductEditor("price", e.target.value)} /></label>
+                    <label>Offer rate<input type="number" min="0" placeholder="Optional" value={productEditor.offerPrice} onChange={e => updateProductEditor("offerPrice", e.target.value)} /></label>
+                    <label>Items per case<input type="number" min="1" value={productEditor.itemsPerCase} onChange={e => updateProductEditor("itemsPerCase", e.target.value)} /></label>
+                    <label className="admin-product-editor-wide">Image URL<input value={productEditor.imageUrl} onChange={e => updateProductEditor("imageUrl", e.target.value)} placeholder="Firebase Storage URL or image path" /></label>
+                    <label className="admin-product-editor-wide">Upload new image<input type="file" accept="image/*" onChange={e => setProductImageFile(e.target.files?.[0] || null)} /><small>{productImageFile ? productImageFile.name : "JPEG, PNG, WEBP up to 5 MB"}</small></label>
+                  </div>
+                  <div className="admin-product-editor-actions"><button className="btn" type="button" disabled={productEditorSaving} onClick={saveProductEditor}>{productEditorSaving ? "Saving…" : "Save Product"}</button><button className={productEditor.active ? "btn danger" : "btn alt"} type="button" disabled={productEditorSaving} onClick={toggleEditorActive}>{productEditor.active ? "Make Inactive" : "Make Active"}</button></div>
+                </div> : <div className="admin-product-editor empty"><p>Select a product to edit its details and image.</p></div>}
+              </div>
+            </section>
+
             <section className="admin-rate-panel" id="admin-rates">
               <div className="admin-rate-header">
                 <div><h2>💰 Update Product Rates</h2><p>Changes are saved to Firebase and used by the storefront after refresh.</p></div>
@@ -1608,6 +1726,8 @@ export default function App() {
 
             <section className="admin-analytics-panel" id="admin-analytics">
               <div className="admin-rate-header"><h2>📈 Site Analytics</h2><p>Anonymous interaction counts saved in Firestore.</p></div>
+              {analyticsLoading && <p className="admin-stat-sub" role="status">Loading analytics from Firestore…</p>}
+              {analyticsError && <div className="err" role="alert">⚠️ {analyticsError}</div>}
               <div className="inventory-summary-grid">
                 <div className="admin-stat-card"><div className="admin-stat-label">Product Views</div><div className="admin-stat-val">{analyticsSummary.counts.view_product || 0}</div></div>
                 <div className="admin-stat-card"><div className="admin-stat-label">Added to Cart</div><div className="admin-stat-val">{analyticsSummary.counts.add_to_cart || 0}</div></div>
@@ -1616,7 +1736,16 @@ export default function App() {
               </div>
               <h3>Most Viewed Products</h3>
               {analyticsSummary.products.length ? <div className="analytics-ranking">{analyticsSummary.products.map(([name, count]) => <div className="admin-ranking-row" key={name}><span>{name}</span><b>{count}</b></div>)}</div> : <p className="admin-stat-sub">No product view events recorded yet.</p>}
-              <button className="btn alt" type="button" onClick={() => loadAnalyticsSummary().then(setAnalyticsSummary)}>🔄 Refresh Analytics</button>
+              <button className="btn alt" type="button" disabled={analyticsLoading} onClick={() => {
+                setAnalyticsLoading(true);
+                setAnalyticsError("");
+                loadAnalyticsSummary()
+                  .then(setAnalyticsSummary)
+                  .catch(error => setAnalyticsError(error?.code === "permission-denied"
+                    ? "Analytics access was denied. Deploy the latest firestore.rules and sign in with an authorized admin account."
+                    : "Unable to load analytics from Firestore. Check the Firebase connection and try again."))
+                  .finally(() => setAnalyticsLoading(false));
+              }}>{analyticsLoading ? "Loading…" : "🔄 Refresh Analytics"}</button>
             </section>
 
             <section className="admin-inventory-panel" id="admin-inventory">

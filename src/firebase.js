@@ -22,6 +22,12 @@ import {
   signOut,
   onAuthStateChanged
 } from "firebase/auth";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "firebase/storage";
 import firebaseAppletConfig from "../firebase-applet-config.json";
 
 const cfg = {
@@ -29,6 +35,7 @@ const cfg = {
   authDomain: firebaseAppletConfig.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: firebaseAppletConfig.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID,
   appId: firebaseAppletConfig.appId || import.meta.env.VITE_FIREBASE_APP_ID,
+  storageBucket: firebaseAppletConfig.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   firestoreDatabaseId: firebaseAppletConfig.firestoreDatabaseId,
 };
 
@@ -36,6 +43,7 @@ export const app = getApps().length ? getApp() : initializeApp(cfg);
 // Orders live in the project's `(default)` Firestore database.
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const storage = getStorage(app, cfg.storageBucket ? `gs://${cfg.storageBucket}` : undefined);
 
 const analyticsSessionId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -106,9 +114,18 @@ export function isUserAdmin(user) {
   return ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === email);
 }
 
+const ratesCache = new Map();
+const ratesInFlight = new Map();
+
 // Returns { cats, discount, minOrder } or null (no Firebase config / no products yet).
 export async function loadRates(options = {}) {
   if (!cfg.projectId) return null;
+  const includeInactive = Boolean(options.includeInactive);
+  const ratesCacheKey = includeInactive ? "all" : "active";
+  const cachedRates = ratesCache.get(ratesCacheKey);
+  if (cachedRates && Date.now() - cachedRates.loadedAt < 60_000) return cachedRates.value;
+  if (ratesInFlight.has(ratesCacheKey)) return ratesInFlight.get(ratesCacheKey);
+  const request = (async () => {
   try {
     const [ps, st] = await Promise.all([
       getDocs(collection(db, "products")),
@@ -116,7 +133,7 @@ export async function loadRates(options = {}) {
     ]);
     const rows = ps.docs
       .map(d => d.data())
-      .filter(p => options.includeInactive || p.active !== false)
+      .filter(p => includeInactive || p.active !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     if (!rows.length) return null;
     const cats = [];
@@ -140,11 +157,16 @@ export async function loadRates(options = {}) {
       return 0;
     });
     const s = st.exists() ? st.data() : {};
-    return { cats, discount: s.discount, minOrder: s.minOrder };
+    const value = { cats, discount: s.discount, minOrder: s.minOrder };
+    ratesCache.set(ratesCacheKey, { value, loadedAt: Date.now() });
+    return value;
   } catch (err) {
     console.warn("Failed to load rates from Firestore:", err);
     return null;
   }
+  })();
+  ratesInFlight.set(ratesCacheKey, request);
+  try { return await request; } finally { ratesInFlight.delete(ratesCacheKey); }
 }
 
 export async function loadInventory() {
@@ -354,7 +376,7 @@ function productDocumentId(productName) {
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-export async function updateProductDetails(productName, { price, offerPrice, category, imageUrl, itemsPerCase, customerName }) {
+export async function updateProductDetails(productName, { price, offerPrice, category, imageUrl, itemsPerCase, customerName, unit }) {
   if (!cfg.projectId) throw new Error("Firebase is not configured.");
   const id = productDocumentId(productName);
   const listedPrice = Number(price);
@@ -368,7 +390,66 @@ export async function updateProductDetails(productName, { price, offerPrice, cat
     ...(imageUrl !== undefined ? { imageUrl: String(imageUrl || "").trim() || null } : {}),
     ...(itemsPerCase !== undefined ? { itemsPerCase: Math.max(1, Number(itemsPerCase) || 1) } : {}),
     ...(customerName !== undefined ? { customerName: String(customerName || productName).trim() || productName } : {}),
+    ...(unit !== undefined ? { unit: String(unit || "1 Box").trim() || "1 Box" } : {}),
   });
+}
+
+function fileToFirestoreImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("The image could not be read."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("The image could not be decoded."));
+      image.onload = () => {
+        const maxSide = 1200;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        const qualities = [0.78, 0.64, 0.5, 0.38];
+        const attempt = index => {
+          const dataUrl = canvas.toDataURL("image/jpeg", qualities[index]);
+          if (dataUrl.length <= 860000 || index === qualities.length - 1) {
+            if (dataUrl.length > 860000) reject(new Error("Image is too large even after compression."));
+            else resolve(dataUrl);
+            return;
+          }
+          attempt(index + 1);
+        };
+        attempt(0);
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function uploadProductImage(productName, file, options = {}) {
+  if (!cfg.projectId) throw new Error("Firebase is not configured.");
+  if (!(file instanceof File)) throw new Error("Choose an image file first.");
+  if (!file.type.startsWith("image/")) throw new Error("Only image files can be uploaded.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Image must be smaller than 5 MB.");
+  const id = productDocumentId(productName);
+  if (!id) throw new Error("Product name is required.");
+  const safeName = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-");
+  let imageUrl;
+  if (options.preferFirestore) {
+    imageUrl = await fileToFirestoreImage(file);
+  } else {
+    try {
+      const imageRef = storageRef(storage, `product-images/${id}-${Date.now()}-${safeName}`);
+      await uploadBytes(imageRef, file, { contentType: file.type, cacheControl: "public,max-age=3600" });
+      imageUrl = await getDownloadURL(imageRef);
+    } catch (error) {
+      if (options.firestoreFallback === false) throw error;
+      console.warn("Firebase Storage upload failed; using a compressed Firestore image instead:", error);
+      imageUrl = await fileToFirestoreImage(file);
+    }
+  }
+  if (options.saveToProduct !== false) await updateDoc(doc(db, "products", id), { imageUrl });
+  return imageUrl;
 }
 
 export async function renameProduct(oldName, newName) {
