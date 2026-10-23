@@ -91,7 +91,9 @@ testConnection();
 export const ADMIN_EMAILS = [
   "mallikarjun.hubballi@gmail.com",
   "mallikarjun.hubballi1@gmail.com",
-  "veereshhubballi789@gmail.com"
+  "veereshhubballi789@gmail.com",
+  "praveensi7026503043@gmail.com",
+  "ingalahallivinayak@gmail.com"
 ];
 
 const googleProvider = new GoogleAuthProvider();

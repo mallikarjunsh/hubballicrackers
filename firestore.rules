@@ -9,6 +9,8 @@ service cloud.firestore {
         request.auth.token.email == 'mallikarjun.hubballi@gmail.com' ||
         request.auth.token.email == 'mallikarjun.hubballi1@gmail.com' ||
         request.auth.token.email == 'veereshhubballi789@gmail.com' ||
+        request.auth.token.email == 'praveensi7026503043@gmail.com' ||
+        request.auth.token.email == 'ingalahallivinayak@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
