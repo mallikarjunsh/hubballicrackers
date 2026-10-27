@@ -104,6 +104,7 @@ The admin **Site Analytics** tab reads these records and shows event totals plus
 ## Caching and Firebase usage
 
 - Customer product images should use normal browser caching. Product image URLs change when an image is replaced, so customers do not need a forced cache bypass.
+- Firebase Hosting sets long-lived cache headers for hashed JS/CSS and a one-week cache for product images; `index.html` remains revalidated for deployments.
 - Admin image previews should use cache busting so an administrator can immediately verify a replacement.
 - Product-rate reads are deduplicated in memory and cached briefly for customers; Firestore remains the source of truth.
 - Do not add repeated Firestore writes for quantity changes or repeated image opens unless the user action represents a new tracked event.

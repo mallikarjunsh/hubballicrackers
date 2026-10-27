@@ -1052,7 +1052,7 @@ export default function App() {
       <header className={chromeHidden ? "chrome-hidden" : ""}>
         <img src={LOGO} alt="Hubballi Crackers" style={{ height: 52 }} />
         <div className="brand-wordmark"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></div>
-        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a><a href="#admin" className="admin-nav-link" onClick={e => { e.preventDefault(); setStep("admin"); window.scrollTo(0, 0); }} aria-label="Open administrator order history and management">📜 Order History &amp; View Orders</a></nav>
+        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a><a href="#admin" className="admin-nav-link" onClick={e => { e.preventDefault(); setStep("admin"); window.scrollTo(0, 0); }} aria-label="Open administrator portal">🔐 Admin</a></nav>
       </header>
 
       <div className="wrap" id="top">
@@ -1755,8 +1755,26 @@ export default function App() {
                 <div className="admin-stat-card"><div className="admin-stat-label">Total Pending</div><div className="admin-stat-val" style={{ color: "var(--brand)" }}>{inventorySummary.pending}</div><div className="admin-stat-sub">Cases converted to pieces</div></div>
                 <div className="admin-stat-card"><div className="admin-stat-label">Total Sold</div><div className="admin-stat-val" style={{ color: "var(--ok)" }}>{inventorySummary.sold}</div><div className="admin-stat-sub">Received minus pending</div></div>
               </div>
-              {shops.map(shop => <div className="inventory-shop" key={shop}>
-                <h3>{shop}</h3>
+              <div className="inventory-combined-summary">
+                <h3>All Shops: Pending and Sold</h3>
+                <p className="admin-stat-sub">Pending and sold quantities are shown in pieces. Sold = received − pending.</p>
+                <div className="inventory-table-wrap"><table className="inventory-table inventory-combined-table"><thead><tr><th>Product</th><th>Tadas Pending</th><th>Tadas Sold</th><th>Shiggaon Pending</th><th>Shiggaon Sold</th><th>Total Pending</th><th>Total Sold</th></tr></thead><tbody>
+                  {DATA.flatMap(group => group.items.map(item => ({ group, item }))).map(({ item }) => {
+                    const perCase = Number(item[8]) || 1;
+                    const shopValues = shops.map(shop => {
+                      const record = inventoryRecords.find(row => row.productName === item[0] && row.shop === shop) || {};
+                      const received = (Number(record.casesReceived) || 0) * perCase + (Number(record.piecesReceived) || 0);
+                      const pending = (Number(record.pendingCases ?? record.casesReceived) || 0) * perCase + (Number(record.pendingPieces ?? record.piecesReceived) || 0);
+                      return { pending, sold: Math.max(0, received - pending) };
+                    });
+                    const totalPending = shopValues.reduce((sum, value) => sum + value.pending, 0);
+                    const totalSold = shopValues.reduce((sum, value) => sum + value.sold, 0);
+                    return <tr key={`combined-${item[0]}`}><td><b>{item[0]}</b><small>{item[10] && item[10] !== item[0] ? `Customer: ${item[10]} · ` : ""}{item[1]} · {perCase} per case</small></td><td>{shopValues[0].pending}</td><td>{shopValues[0].sold}</td><td>{shopValues[1].pending}</td><td>{shopValues[1].sold}</td><td><strong>{totalPending}</strong></td><td><strong>{totalSold}</strong></td></tr>;
+                  })}
+                </tbody></table></div>
+              </div>
+              {shops.map(shop => <details className="inventory-shop" key={shop} open>
+                <summary>{shop}</summary>
                 <div className="inventory-table-wrap"><table className="inventory-table"><thead><tr><th>Product</th><th>Items / case</th><th>Received cases</th><th>Received pieces</th><th>Pending cases</th><th>Pending pieces</th><th>Total received</th><th>Total pending</th><th>Sold</th><th></th></tr></thead><tbody>
                   {DATA.flatMap(group => group.items.map(item => ({ group, item }))).map(({ item }) => {
                     const key = inventoryKey(item[0], shop);
@@ -1773,7 +1791,7 @@ export default function App() {
                     return <tr key={key}><td><b>{item[0]}</b><small>{item[1]}</small></td><td>{perCase}</td><td><input type="number" min="0" value={cases} onChange={e => updateInventoryDraft(key, "cases", e.target.value)} /></td><td><input type="number" min="0" value={pieces} onChange={e => updateInventoryDraft(key, "pieces", e.target.value)} /></td><td><input type="number" min="0" value={pendingCases} onChange={e => updateInventoryDraft(key, "pendingCases", e.target.value)} /></td><td><input type="number" min="0" value={pendingPieces} onChange={e => updateInventoryDraft(key, "pendingPieces", e.target.value)} /></td><td>{totalReceived}</td><td><strong>{totalPending}</strong></td><td><strong>{sold}</strong></td><td><button className="btn alt" type="button" disabled={inventorySaving === key} onClick={() => saveInventoryRow(item[0], shop)}>{inventorySaving === key ? "Saving…" : "Save"}</button></td></tr>;
                   })}
                 </tbody></table></div>
-              </div>)}
+              </details>)}
             </section>
 
             <div className="admin-filters-bar" id="admin-orders">
