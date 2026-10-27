@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.4",
+    "firebase-tools": "^15.34.1",
     "vite": "^7.1.12"
   }
 }
