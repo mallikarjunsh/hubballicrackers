@@ -24,6 +24,7 @@ import {
   loadAnalyticsSummary
 } from "./firebase";
 import PRODUCT_IMAGE_MANIFEST from "./productImages.json";
+import { getText } from "./translations";
 let DISC = 0.2; // 20% off the listed price
 const SHOP = "Hubballi Crackers";
 const SHOP_EMAIL = "mallikarjun.hubballi1@gmail.com";
@@ -121,20 +122,28 @@ function formatOrderDate(val) {
   }
 }
 
-function getStatusInfo(status) {
+function getStatusInfo(status, language = "en") {
+  const labels = {
+    pending_confirmation: { en: "Pending Confirmation", kn: "ಖಚಿತಪಡಿಸುವಿಕೆ ಬಾಕಿ" },
+    confirmed: { en: "Confirmed", kn: "ಖಚಿತಪಡಿಸಲಾಗಿದೆ" },
+    dispatched: { en: "Dispatched", kn: "ರವಾನಿಸಲಾಗಿದೆ" },
+    delivered: { en: "Delivery Successful", kn: "ಡೆಲಿವರಿ ಪೂರ್ಣಗೊಂಡಿದೆ" },
+    cancelled: { en: "Cancelled", kn: "ರದ್ದುಪಡಿಸಲಾಗಿದೆ" },
+  };
+  const labelFor = key => labels[key]?.[language] || labels[key]?.en;
   switch (status) {
     case "pending_confirmation":
-      return { label: "Pending Confirmation", className: "order-badge-pending", icon: "⏳" };
+      return { label: labelFor(status), className: "order-badge-pending", icon: "⏳" };
     case "confirmed":
-      return { label: "Confirmed", className: "order-badge-confirmed", icon: "✅" };
+      return { label: labelFor(status), className: "order-badge-confirmed", icon: "✅" };
     case "dispatched":
-      return { label: "Dispatched", className: "order-badge-dispatched", icon: "🚚" };
+      return { label: labelFor(status), className: "order-badge-dispatched", icon: "🚚" };
     case "delivered":
-      return { label: "Delivery Successful", className: "order-badge-delivered", icon: "🎉" };
+      return { label: labelFor(status), className: "order-badge-delivered", icon: "🎉" };
     case "cancelled":
-      return { label: "Cancelled", className: "order-badge-cancelled", icon: "❌" };
+      return { label: labelFor(status), className: "order-badge-cancelled", icon: "❌" };
     default:
-      return { label: status || "Submitted", className: "order-badge-pending", icon: "📋" };
+      return { label: status || (language === "kn" ? "ಸಲ್ಲಿಸಲಾಗಿದೆ" : "Submitted"), className: "order-badge-pending", icon: "📋" };
   }
 }
 
@@ -158,6 +167,110 @@ function printOrderReceipt(order) {
   const items = (order.items || []).map(item => `<tr><td>${item.name} (${item.unit || ""})</td><td>${item.quantity || 0}</td><td>${inr(item.total || 0)}</td></tr>`).join("");
   popup.document.write(`<!doctype html><html><head><title>Order ${order.id} Receipt</title><style>body{font:14px Arial;padding:28px;color:#251b12}h1{color:#176047}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}td:nth-child(2),td:nth-child(3){text-align:right}.total{font-size:18px;font-weight:bold;margin-top:20px;text-align:right}</style></head><body><h1>Hubballi Crackers</h1><p>Order #${order.id}<br>${formatOrderDate(order.createdAt)}</p><p><b>${order.customer?.name || ""}</b><br>+91 ${order.customer?.mobile || ""}<br>${order.customer?.address || ""}, ${order.customer?.city || ""}, ${order.customer?.state || ""}</p><table><thead><tr><th>Product</th><th>Qty</th><th>Total</th></tr></thead><tbody>${items}</tbody></table><p class="total">Overall Total: ${inr(order.total || 0)}</p><script>window.onload=()=>window.print()</script></body></html>`);
   popup.document.close();
+}
+
+function ContactPage({ onBack, t }) {
+  const primaryPhone = PHONES[0];
+  const mapSrc = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3851.045199754937!2d75.14232369999999!3d15.1558622!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bb92fc103f4da3f%3A0x5957e1b2ef60b253!2sHubballi%20Crackers!5e0!3m2!1sen!2sin!4v1793476154503!5m2!1sen!2sin";
+
+  return (
+    <section className="contact-page" id="contact-page" aria-labelledby="contact-page-title">
+      <div className="contact-hero">
+        <div className="contact-hero-copy">
+          <span className="contact-eyebrow">{t("findUs")}</span>
+          <h1 id="contact-page-title">{t("comeHello")}</h1>
+          <p>{t("visitLocations")}</p>
+          <div className="contact-hero-actions">
+            <a className="btn" href={`tel:+91${primaryPhone}`}>{t("callStore")}</a>
+            <a className="btn alt" href={`mailto:${SHOP_EMAIL}`}>{t("emailUs")}</a>
+          </div>
+          <div className="contact-trust-row" aria-label="Store benefits">
+            <span><b>✓</b> {t("genuine")}</span>
+            <span><b>✓</b> {t("wholesaleRetail")}</span>
+            <span><b>✓</b> {t("friendlyGuidance")}</span>
+          </div>
+        </div>
+        <div className="contact-hero-art" aria-hidden="true">
+          <span className="contact-art-star star-one">✦</span>
+          <span className="contact-art-star star-two">✧</span>
+          <span className="contact-art-star star-three">✦</span>
+          <span className="contact-art-spark spark-one" />
+          <span className="contact-art-spark spark-two" />
+          <div className="contact-art-lamp">🏮</div>
+          <div className="contact-art-caption">{t("celebrateFirst")}<br /><strong>{t("celebrateSecond")}</strong></div>
+        </div>
+      </div>
+
+      <div className="contact-layout">
+        <div className="contact-info-column">
+          <div className="contact-section-heading">
+            <span className="contact-kicker">{t("findUs")}</span>
+            <h2>{t("comeHello")}</h2>
+            <p>{t("visitLocations")}</p>
+          </div>
+
+          <div className="contact-location-card">
+            <span className="contact-card-icon">📍</span>
+            <div>
+              <span className="contact-card-label">{t("mainShop")}</span>
+              <h3>Tadas Cross</h3>
+              <p>Near Gayatri Matt, Ramankoppa / Tadas Cross<br />581116, Karnataka</p>
+              <a className="contact-inline-link" href="https://www.google.com/maps/place/Hubballi+Crackers/@15.155924,75.141337,16z/data=!4m6!3m5!1s0x3bb92fc103f4da3f:0x5957e1b2ef60b253!8m2!3d15.1558622!4d75.1423237!16s%2Fg%2F11zymk0rsb?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MTAyOC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer">{t("directions")} <span>↗</span></a>
+            </div>
+          </div>
+
+          <div className="contact-location-card">
+            <span className="contact-card-icon">🏪</span>
+            <div>
+              <span className="contact-card-label">{t("seasonalStall")}</span>
+              <h3>Shiggaon</h3>
+              <p>Stall No. 6, APMC Ground<br />Shiggaon, Karnataka</p>
+              <span className="contact-card-note">{t("openFestive")}</span>
+            </div>
+          </div>
+
+          <div className="contact-direct-card">
+            <div>
+              <span className="contact-card-label">{t("talkTeam")}</span>
+              <p>{t("talkDescription")}</p>
+            </div>
+            <div className="contact-phone-list">
+              {PHONES.map(phone => <a key={phone} href={`tel:+91${phone}`}>+91 {phone}</a>)}
+            </div>
+          </div>
+        </div>
+
+        <div className="contact-map-card">
+          <div className="contact-map-heading">
+            <div>
+              <span className="contact-kicker">{t("ourLocation")}</span>
+              <h2>{t("findMap")}</h2>
+            </div>
+            <span className="contact-map-pin">📌</span>
+          </div>
+          <div className="contact-map-frame">
+            <iframe
+              src={mapSrc}
+              title={t("mapTitle")}
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+          <div className="contact-map-footer">
+            <span>Hubballi Crackers · Tadas Cross</span>
+            <a href="https://www.google.com/maps/place/Hubballi+Crackers/@15.155924,75.141337,16z/data=!4m6!3m5!1s0x3bb92fc103f4da3f:0x5957e1b2ef60b253!8m2!3d15.1558622!4d75.1423237!16s%2Fg%2F11zymk0rsb?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MTAyOC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer">{t("openMaps")}</a>
+          </div>
+        </div>
+      </div>
+
+      <div className="contact-note">
+        <span className="contact-note-icon">✨</span>
+        <div><strong>{t("planningCelebration")}</strong><br />{t("enquiryOffline")}</div>
+        <button className="btn alt" type="button" onClick={onBack}>{t("browsePricelist")}</button>
+      </div>
+    </section>
+  );
 }
 
 function HeroCarousel() {
@@ -271,6 +384,15 @@ export default function App() {
   const [live, setLive] = useState("loading");
   const [showBrandIntro, setShowBrandIntro] = useState(true);
   const [chromeHidden, setChromeHidden] = useState(false);
+  const [language, setLanguage] = useState(() => {
+    try { return localStorage.getItem("hubballi-language") === "kn" ? "kn" : "en"; } catch { return "en"; }
+  });
+  const t = (key, values) => getText(language, key, values);
+  const toggleLanguage = () => setLanguage(current => current === "en" ? "kn" : "en");
+  useEffect(() => {
+    try { localStorage.setItem("hubballi-language", language); } catch {}
+    document.documentElement.lang = language;
+  }, [language]);
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => setShowBrandIntro(false), reducedMotion ? 50 : 3200);
@@ -514,7 +636,7 @@ export default function App() {
       setEditingTrackingId(null);
       setActionToast({
         type: "success",
-        text: `Order #${order.id} status updated to ${getStatusInfo(newStatus).label}!`
+        text: `Order #${order.id} status updated to ${getStatusInfo(newStatus, language).label}!`
       });
       setTimeout(() => setActionToast(null), 3500);
     } catch (err) {
@@ -884,15 +1006,31 @@ export default function App() {
   }).filter(c => c.items.length);
 
   const errs = {};
-  if (!f.state) errs.state = "Select a state";
-  if (!f.city.trim()) errs.city = "Enter your city";
-  if (!f.name.trim()) errs.name = "Enter your name";
-  if (!/^[6-9]\d{9}$/.test(f.mobile)) errs.mobile = "Enter a valid 10-digit mobile";
-  if (!f.address.trim()) errs.address = "Enter your address";
-  if (f.state && net < min) errs.min = "Minimum order for " + f.state + " is " + inr(min);
+  if (!f.state) errs.state = language === "kn" ? "ರಾಜ್ಯವನ್ನು ಆಯ್ಕೆಮಾಡಿ" : "Select a state";
+  if (!f.city.trim()) errs.city = language === "kn" ? "ನಿಮ್ಮ ನಗರವನ್ನು ನಮೂದಿಸಿ" : "Enter your city";
+  if (!f.name.trim()) errs.name = language === "kn" ? "ನಿಮ್ಮ ಹೆಸರನ್ನು ನಮೂದಿಸಿ" : "Enter your name";
+  if (!/^[6-9]\d{9}$/.test(f.mobile)) errs.mobile = language === "kn" ? "ಸರಿಯಾದ 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ" : "Enter a valid 10-digit mobile";
+  if (!f.address.trim()) errs.address = language === "kn" ? "ನಿಮ್ಮ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ" : "Enter your address";
+  if (f.state && net < min) errs.min = t("minOrder", { state: f.state, amount: inr(min) });
   const bad = Object.keys(errs).length > 0;
   const upd = k => e => setF({ ...f, [k]: e.target.value });
   const msg = id => "Enquiry for " + SHOP + "\nOrder ID: " + id + "\n\nName: " + f.name + "\nMobile: " + f.mobile + (f.email ? "\nEmail: " + f.email : "") + "\nCity: " + f.city + ", " + f.state + "\nAddress: " + f.address + "\n\nItems:\n" + lines.map(l => "- " + l.n + " x " + l.qn + " = " + inr(l.o * l.qn)).join("\n") + "\n\nNet Total: " + inr(net) + "\nPacking (3%): " + inr(pack) + "\nYou Save: " + inr(save) + "\nOverall: " + inr(total);
+  const sendCartToWhatsApp = () => {
+    if (!lines.length) return;
+    const message = [
+      t("cartMessageIntro"),
+      `${t("selectedShop")}: ${f.shop}`,
+      "",
+      ...lines.map(line => `• ${line.n} (${line.u}) × ${line.qn} = ${inr(line.o * line.qn)}`),
+      "",
+      `${t("cartMessageNet")}: ${inr(net)}`,
+      `${t("cartMessagePacking")}: ${inr(pack)}`,
+      `${t("cartMessageSavings")}: ${inr(save)}`,
+      `${t("cartMessageOverall")}: ${inr(total)}`
+    ].join("\n");
+    trackSiteEvent("whatsapp_cart_enquiry", { itemCount: count, total });
+    window.open(`https://wa.me/91${PHONES[0]}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  };
   const [sent, setSent] = useState("");
   const submit = async () => {
     setTouched(true);
@@ -1041,39 +1179,39 @@ export default function App() {
           <span className="cracker-rocket cracker-rocket-right">🚀</span>
         </div>
         <div className="brand-intro-card">
-          <span className="brand-intro-kicker">Welcome to</span>
+          <span className="brand-intro-kicker">{t("welcome")}</span>
           <span className="brand-intro-english">Hubballi Crackers</span>
           <span className="brand-intro-kannada" lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span>
-          <span className="brand-intro-tagline">Wholesale &amp; Retail · Festive Fireworks</span>
-          <button type="button" className="brand-intro-continue" onClick={() => setShowBrandIntro(false)}>Continue</button>
+          <span className="brand-intro-tagline">{t("tagline")}</span>
+          <button type="button" className="brand-intro-continue" onClick={() => setShowBrandIntro(false)}>{t("continue")}</button>
         </div>
       </div>}
-      <div className="banner">🔥 Deepavali Special Offer · Festive Savings Up to {Math.round(DISC * 100)}% · Limited Stock 🔥</div>
+      <div className="banner">{t("offerBanner", { discount: Math.round(DISC * 100) })}</div>
       <header className={chromeHidden ? "chrome-hidden" : ""}>
         <img src={LOGO} alt="Hubballi Crackers" style={{ height: 52 }} />
         <div className="brand-wordmark"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></div>
-        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => setStep("list")}>Pricelist</a><button className="nav-action" type="button" onClick={openOrderLookup}>Find by ID</button><a href="#safety">Safety Tips</a><a href="#contact">Contact</a><a href="#admin" className="admin-nav-link" onClick={e => { e.preventDefault(); setStep("admin"); window.scrollTo(0, 0); }} aria-label="Open administrator portal">🔐 Admin</a></nav>
+        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>{t("priceList")}</a><button className="nav-action" type="button" onClick={openOrderLookup}>{t("findById")}</button><a href="#safety">{t("safetyTips")}</a><a href="#contact-page" onClick={e => { e.preventDefault(); setStep("contact"); window.scrollTo(0, 0); }}>{t("contact")}</a><button type="button" className="language-toggle" onClick={toggleLanguage} aria-label={language === "en" ? t("switchToKannada") : t("switchToEnglish")}><span>{language === "en" ? "EN" : t("contactLanguage")}</span><span>↔</span><span>{language === "en" ? t("contactLanguage") : "EN"}</span></button><a href="#admin" className="admin-nav-link" onClick={e => { e.preventDefault(); setStep("admin"); window.scrollTo(0, 0); }} aria-label={t("admin")}>🔐 {t("admin")}</a></nav>
       </header>
 
       <div className="wrap" id="top">
         {step === "list" && <>
           <div className="hero">
-            <div className="mini-badge">🏮 Deepavali Collection</div>
-            <h1><span className="brand-highlight"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></span><span className="hero-title-rest">Price List</span></h1>
-            <p>Wholesale &amp; Retail Fancy Fireworks · Trusted festive store for families across Karnataka and South India.</p>
+            <div className="mini-badge">{t("collection")}</div>
+            <h1><span className="brand-highlight"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></span><span className="hero-title-rest">{t("priceListTitle")}</span></h1>
+            <p>{t("storeDescription")}</p>
           </div>
           <HeroCarousel />
-          {live === "loading" && <div className="empty">Loading latest rates…</div>}
-          {live === "error" && <div className="err" style={{ textAlign: "center" }}>Could not load rates from Firebase. Please check your connection and try again.</div>}
-          <div className="tools"><input placeholder="🔍 Search crackers…" value={q} onChange={e => setQ(e.target.value)} /></div>
+          {live === "loading" && <div className="empty">{t("loadingRates")}</div>}
+          {live === "error" && <div className="err" style={{ textAlign: "center" }}>{t("ratesError")}</div>}
+          <div className="tools"><input placeholder={t("search")} value={q} onChange={e => setQ(e.target.value)} /></div>
           <div className="chips">
-            <button className={"chip" + (cat === "all" ? " on" : "")} onClick={() => setCat("all")}>All</button>
+            <button className={"chip" + (cat === "all" ? " on" : "")} onClick={() => setCat("all")}>{t("all")}</button>
             {DATA.map(c => <button key={c.id} className={"chip" + (cat === c.id ? " on" : "")} onClick={() => setCat(c.id)}>{c.emoji} {c.name}</button>)}
           </div>
-          {shown.length === 0 && <div className="empty">No products match “{q}”.</div>}
+          {shown.length === 0 && <div className="empty">{t("noProducts", { query: q })}</div>}
           {shown.map(c => (
             <section key={c.id}>
-              <h2 className="cat">{c.emoji} {c.name} <small>{c.net ? "NET RATE" : c.items.some(item => item[4] != null) ? "SPECIAL OFFERS" : Math.round(DISC * 100) + "% OFF"}</small></h2>
+              <h2 className="cat">{c.emoji} {c.name} <small>{c.net ? t("netRate") : c.items.some(item => item[4] != null) ? t("specialOffers") : t("off", { discount: Math.round(DISC * 100) })}</small></h2>
               <div className="product-grid">{c.items.map(([n, u, p, imageUrl, offerPrice, stock, threshold, active, perCase, variant, customerName]) => {
                 const k = c.id + "|" + n, v = cart[k] || 0, o = offer(c, p, offerPrice);
                 const displayName = customerName || n;
@@ -1085,7 +1223,7 @@ export default function App() {
                 </article>;
               })}</div>
               <div className="tbl"><table>
-                <thead><tr><th></th><th>Product</th><th>Content</th><th>Actual</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead>
+                <thead><tr><th></th><th>{t("product")}</th><th>{t("content")}</th><th>{t("actual")}</th><th>{t("price")}</th><th>{t("quantity")}</th><th>{t("total")}</th></tr></thead>
                 <tbody>{c.items.map(([n, u, p, imageUrl, offerPrice, stock, threshold, active, perCase, variant, customerName]) => {
                   const k = c.id + "|" + n, v = cart[k] || 0, o = offer(c, p, offerPrice);
                   const displayName = customerName || n;
@@ -1101,8 +1239,8 @@ export default function App() {
 
           {currentUser && isUserAdmin(currentUser) && <section className="order-history-section" id="order-history">
             <div className="order-history-header">
-              <h2>📜 Order History <small style={{ fontSize: "14px", fontWeight: "normal", color: "var(--mute)" }}>(ನಿಮ್ಮ ಹಿಂದಿನ ಆರ್ಡರ್‌ಗಳು)</small></h2>
-              <p>Enter your 10-digit mobile number to view all your past cracker enquiries, order statuses, and totals.</p>
+              <h2>{t("orderHistory")}</h2>
+              <p>{t("orderHistoryDescription")}</p>
             </div>
 
             <form className="order-history-form" onSubmit={e => { e.preventDefault(); searchOrderHistory(); }}>
@@ -1121,13 +1259,13 @@ export default function App() {
                     setHistoryMobile(val);
                     if (historyState.status !== "idle") setHistoryState({ status: "idle", orders: [] });
                   }}
-                  placeholder="Enter 10-digit mobile number"
-                  aria-label="10-digit mobile number for order history"
+                  placeholder={t("mobilePlaceholder")}
+                  aria-label={t("mobilePlaceholder")}
                   required
                 />
               </div>
               <button className="btn" type="submit" disabled={historyState.status === "loading"}>
-                {historyState.status === "loading" ? "Searching…" : "View Past Orders"}
+                {historyState.status === "loading" ? t("searching") : t("searchOrders")}
               </button>
               {historyState.status !== "idle" && (
                 <button
@@ -1138,14 +1276,14 @@ export default function App() {
                     setHistoryMobile("");
                   }}
                 >
-                  Clear
+                  {t("clear")}
                 </button>
               )}
             </form>
 
             {savedPhone && savedPhone !== historyMobile && (
               <div className="order-history-quick-phone">
-                <span>Quick fill:</span>
+                <span>{t("quickFill")}</span>
                 <button
                   type="button"
                   className="order-history-quick-btn"
@@ -1154,14 +1292,14 @@ export default function App() {
                     searchOrderHistory(savedPhone);
                   }}
                 >
-                  📱 Use {savedPhone}
+                  📱 {t("use")} {savedPhone}
                 </button>
               </div>
             )}
 
             {historyState.status === "loading" && (
               <div className="empty" role="status">
-                <span>⏳ Looking up past orders for +91 {historyMobile}…</span>
+                <span>{t("lookingUpOrders", { phone: historyMobile })}</span>
               </div>
             )}
 
@@ -1174,10 +1312,10 @@ export default function App() {
             {historyState.status === "empty" && (
               <div className="empty" role="status">
                 <p style={{ margin: "0 0 6px", fontSize: "16px", color: "var(--ink)", fontWeight: "700" }}>
-                  No orders found for +91 {historyState.searchedPhone}
+                  {t("noOrders", { phone: historyState.searchedPhone })}
                 </p>
                 <p style={{ margin: 0, fontSize: "13px" }}>
-                  Make sure this matches the 10-digit number entered when placing your enquiry.
+                  {t("noOrdersHint")}
                 </p>
               </div>
             )}
@@ -1186,16 +1324,16 @@ export default function App() {
               <div className="order-history-results">
                 <div className="order-history-stats-banner">
                   <div>
-                    <span>Found <b>{historyState.orders.length}</b> {historyState.orders.length === 1 ? "enquiry" : "enquiries"} for +91 {historyMobile}</span>
+                    <span>{t("found")} <b>{historyState.orders.length}</b> {historyState.orders.length === 1 ? t("enquiry") : t("enquiries")} · +91 {historyMobile}</span>
                   </div>
                   <div>
-                    <span>Total Value: <b>{inr(historyState.orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0))}</b></span>
+                    <span>{t("totalValue")} <b>{inr(historyState.orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0))}</b></span>
                   </div>
                 </div>
 
                 <div className="order-history-cards-list">
                   {historyState.orders.map(order => {
-                    const statusInfo = getStatusInfo(order.status);
+                    const statusInfo = getStatusInfo(order.status, language);
                     const isExpanded = expandedOrderIds.has(order.id);
                     const itemCount = order.items?.reduce((cnt, it) => cnt + (it.quantity || 1), 0) || order.items?.length || 0;
                     const dateStr = formatOrderDate(order.createdAt);
@@ -1218,34 +1356,34 @@ export default function App() {
                         </div>
 
                         <div className="order-customer-meta">
-                          <b>Customer:</b> {order.customer?.name} {order.customer?.city ? `· ${order.customer.city}, ${order.customer.state || ""}` : ""}
+                          <b>{t("customer")}</b> {order.customer?.name} {order.customer?.city ? `· ${order.customer.city}, ${order.customer.state || ""}` : ""}
                         </div>
 
                         {order.deliveryNote && (
                           <div style={{ background: "rgba(23, 96, 71, 0.08)", border: "1px solid var(--line)", padding: "6px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
-                            🚚 <b>Delivery Note / Tracking:</b> {order.deliveryNote}
+                            🚚 <b>{t("deliveryNote")}</b> {order.deliveryNote}
                           </div>
                         )}
 
                         <div className="order-metrics-grid">
                           <div className="order-metric-box">
-                            <span className="order-metric-label">Items</span>
-                            <span className="order-metric-value">{itemCount} items</span>
+                            <span className="order-metric-label">{t("items")}</span>
+                            <span className="order-metric-value">{itemCount} {t("itemsCount")}</span>
                           </div>
                           <div className="order-metric-box">
-                            <span className="order-metric-label">Net Rate</span>
+                            <span className="order-metric-label">{t("netRateLabel")}</span>
                             <span className="order-metric-value">{inr(order.net || 0)}</span>
                           </div>
                           <div className="order-metric-box">
-                            <span className="order-metric-label">Packing (3%)</span>
+                            <span className="order-metric-label">{t("packing")}</span>
                             <span className="order-metric-value">{inr(order.packing || 0)}</span>
                           </div>
                           <div className="order-metric-box">
-                            <span className="order-metric-label">You Saved</span>
+                            <span className="order-metric-label">{t("youSaved")}</span>
                             <span className="order-metric-value savings">{inr(order.savings || 0)}</span>
                           </div>
                           <div className="order-metric-box">
-                            <span className="order-metric-label">Overall Total</span>
+                            <span className="order-metric-label">{t("overallTotal")}</span>
                             <span className="order-metric-value total">{inr(order.total || 0)}</span>
                           </div>
                         </div>
@@ -1273,7 +1411,7 @@ export default function App() {
                             onClick={() => toggleOrderExpand(order.id)}
                             aria-expanded={isExpanded}
                           >
-                            {isExpanded ? "Hide Details ▲" : "View Details ▼"}
+                            {isExpanded ? t("hideDetails") : t("viewDetails")}
                           </button>
                           <a
                             className="btn alt"
@@ -1292,14 +1430,15 @@ export default function App() {
                               `Hello Hubballi Crackers, enquiry update regarding Order ID: #${order.id} (Mobile: ${order.customer?.mobile || historyMobile}, Total: ${inr(order.total || 0)})`
                             )}`}
                           >
-                            💬 WhatsApp Store
+                            {t("whatsappStore")}
                           </a>
                         </div>
 
                         {isExpanded && (
                           <div className="order-details-expanded">
                             <p style={{ margin: "0 0 8px", fontSize: "13px" }}>
-                              <b>Delivery Address:</b> {order.customer?.address || "Not specified"}, {order.customer?.city}, {order.customer?.state}
+                              <b>{t("deliveryAddress")}</b> {order.customer?.address || t("notSpecified")},
+ {order.customer?.city}, {order.customer?.state}
                             </p>
                             {order.customer?.email && (
                               <p style={{ margin: "0 0 10px", fontSize: "13px" }}>
@@ -1338,85 +1477,87 @@ export default function App() {
         </>}
 
         {step === "lookup" && <section className="order-page">
-          <div className="hero"><h1>Find your order</h1><p>Enter the 6-digit Order ID from your enquiry receipt.</p></div>
+          <div className="hero"><h1>{t("findOrderTitle")}</h1><p>{t("findOrderDescription")}</p></div>
           <div className="panel order-lookup" id="order-lookup">
             <form className="order-lookup-form" onSubmit={lookupOrder}>
               <label className="sr-only" htmlFor="lookup-order-id">6-digit Order ID</label>
-              <input id="lookup-order-id" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={lookupId} onChange={e => { setLookupId(e.target.value.replace(/\D/g, "").slice(0, 6)); setLookupState({ status: "idle" }); }} placeholder="Enter 6-digit Order ID" required />
-              <button className="btn" type="submit" disabled={lookupState.status === "loading"}>{lookupState.status === "loading" ? "Searching…" : "Find Order"}</button>
+              <input id="lookup-order-id" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={lookupId} onChange={e => { setLookupId(e.target.value.replace(/\D/g, "").slice(0, 6)); setLookupState({ status: "idle" }); }} placeholder={t("orderIdPlaceholder")} aria-label={t("orderIdPlaceholder")} required />
+              <button className="btn" type="submit" disabled={lookupState.status === "loading"}>{lookupState.status === "loading" ? t("searching") : t("findOrder")}</button>
             </form>
-            {lookupState.status === "missing" && <p className="err" role="status">No order was found with that ID.</p>}
+            {lookupState.status === "missing" && <p className="err" role="status">{t("noOrderId")}</p>}
             {lookupState.status === "error" && <p className="err" role="alert">{lookupState.message}</p>}
             {lookupState.status === "found" && <div className="order-details" role="status">
-              <h3>Order {lookupState.order.id}</h3>
+              <h3>{t("order")} {lookupState.order.id}</h3>
               <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "10px", flexWrap: "wrap" }}>
-                <span className={`order-badge ${getStatusInfo(lookupState.order.status).className}`}>
-                  {getStatusInfo(lookupState.order.status).icon} {getStatusInfo(lookupState.order.status).label}
+                <span className={`order-badge ${getStatusInfo(lookupState.order.status, language).className}`}>
+                  {getStatusInfo(lookupState.order.status, language).icon} {getStatusInfo(lookupState.order.status, language).label}
                 </span>
                 <span className={lookupState.order.paid ? "admin-badge-paid" : "admin-badge-unpaid"}>
-                  {lookupState.order.paid ? `💳 Paid${lookupState.order.paymentMode ? ` (${lookupState.order.paymentMode})` : ""}` : "⏳ Payment Unpaid"}
+                  {lookupState.order.paid ? `💳 ${language === "kn" ? "ಪಾವತಿಸಲಾಗಿದೆ" : "Paid"}${lookupState.order.paymentMode ? ` (${lookupState.order.paymentMode})` : ""}` : t("paymentUnpaid")}
                 </span>
               </div>
               {lookupState.order.deliveryNote && (
                 <div style={{ background: "rgba(23, 96, 71, 0.08)", border: "1px solid var(--line)", padding: "8px 12px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
-                  🚚 <b>Delivery Note / Tracking:</b> {lookupState.order.deliveryNote}
+                  🚚 <b>{t("deliveryNote")}</b> {lookupState.order.deliveryNote}
                 </div>
               )}
-              <p><b>Customer:</b> {lookupState.order.customer.name} · +91 {lookupState.order.customer.mobile}</p>
-              {lookupState.order.customer.email && <p><b>Email:</b> {lookupState.order.customer.email}</p>}
-              <p><b>Delivery location:</b> {lookupState.order.customer.city}, {lookupState.order.customer.state} · {lookupState.order.customer.address}</p>
+              <p><b>{t("customer")}</b> {lookupState.order.customer.name} · +91 {lookupState.order.customer.mobile}</p>
+              {lookupState.order.customer.email && <p><b>{t("email")}</b> {lookupState.order.customer.email}</p>}
+              <p><b>{t("deliveryLocation")}</b> {lookupState.order.customer.city}, {lookupState.order.customer.state} · {lookupState.order.customer.address}</p>
               {lookupState.order.items.map((item, index) => <div className="row" key={index}><span>{item.name} ({item.unit}) × {item.quantity}</span><span>{inr(item.total)}</span></div>)}
-              <div className="row"><span>Net Total</span><span>{inr(lookupState.order.net)}</span></div>
-              <div className="row"><span>Packing Charges</span><span>{inr(lookupState.order.packing)}</span></div>
-              <div className="row"><span>You Save</span><span>{inr(lookupState.order.savings)}</span></div>
-              <div className="row t"><span>Overall Amount</span><span>{inr(lookupState.order.total)}</span></div>
+              <div className="row"><span>{t("netRateLabel")}</span><span>{inr(lookupState.order.net)}</span></div>
+              <div className="row"><span>{t("packingCharges")}</span><span>{inr(lookupState.order.packing)}</span></div>
+              <div className="row"><span>{t("youSaved")}</span><span>{inr(lookupState.order.savings)}</span></div>
+              <div className="row t"><span>{t("overallAmount")}</span><span>{inr(lookupState.order.total)}</span></div>
             </div>}
             <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-              <button className="btn alt order-back" type="button" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>Back to Pricelist</button>
-              <button className="btn alt order-back" type="button" onClick={() => { setStep("admin"); window.scrollTo(0, 0); }}>View All Past Orders by Phone →</button>
+              <button className="btn alt order-back" type="button" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>{t("backToPricelist")}</button>
+              <button className="btn alt order-back" type="button" onClick={() => { setStep("admin"); window.scrollTo(0, 0); }}>{t("viewOrdersByPhone")}</button>
             </div>
           </div>
         </section>}
 
+        {step === "contact" && <ContactPage t={t} onBack={() => { setStep("list"); window.scrollTo(0, 0); }} />}
+
         {step === "form" && <>
-          <div className="hero"><h1>Confirm Your Estimate</h1></div>
+          <div className="hero"><h1>{t("confirmTitle")}</h1></div>
           <div className="panel">
             <div className="mins">{Object.entries(MIN).map(([s, a]) => <span key={s}>{s}: <b>{inr(a)}</b></span>)}</div>
             <div className="grid">
-              <div><label>Shop *</label><select value={f.shop} onChange={upd("shop")}><option>Tadas Cross</option><option>Shiggaon</option></select></div>
-              <div><label>State *</label><select value={f.state} onChange={upd("state")}><option value="">Select State</option>{Object.keys(MIN).map(s => <option key={s}>{s}</option>)}</select><Err k="state" /></div>
-              <div><label>City *</label><input value={f.city} onChange={upd("city")} placeholder="e.g. Bengaluru" /><Err k="city" /></div>
-              <div><label>Name *</label><input value={f.name} onChange={upd("name")} /><Err k="name" /></div>
-              <div><label>Mobile Number *</label><input inputMode="numeric" maxLength={10} value={f.mobile} onChange={e => setF({ ...f, mobile: e.target.value.replace(/\D/g, "") })} /><Err k="mobile" /></div>
-              <div><label>Email</label><input type="email" value={f.email} onChange={upd("email")} /></div>
-              <div><label>Address *</label><textarea rows={2} value={f.address} onChange={upd("address")} /><Err k="address" /></div>
+              <div><label>{t("shop")} *</label><select value={f.shop} onChange={upd("shop")}><option>Tadas Cross</option><option>Shiggaon</option></select></div>
+              <div><label>{t("state")} *</label><select value={f.state} onChange={upd("state")}><option value="">{t("selectState")}</option>{Object.keys(MIN).map(s => <option key={s}>{s}</option>)}</select><Err k="state" /></div>
+              <div><label>{t("city")} *</label><input value={f.city} onChange={upd("city")} placeholder={t("cityPlaceholder")} /><Err k="city" /></div>
+              <div><label>{t("name")} *</label><input value={f.name} onChange={upd("name")} /><Err k="name" /></div>
+              <div><label>{t("mobile")} *</label><input inputMode="numeric" maxLength={10} value={f.mobile} onChange={e => setF({ ...f, mobile: e.target.value.replace(/\D/g, "") })} /><Err k="mobile" /></div>
+              <div><label>{t("emailOptional")}</label><input type="email" value={f.email} onChange={upd("email")} /></div>
+              <div><label>{t("address")} *</label><textarea rows={2} value={f.address} onChange={upd("address")} /><Err k="address" /></div>
             </div>
             {touched && errs.min && <div className="err" style={{ marginTop: 10 }}>{errs.min}</div>}
           </div>
           <div className="panel">
             {lines.map(l => <div className="row" key={l.k}><span>{l.n} × {l.qn}</span><span>{inr(l.o * l.qn)}</span></div>)}
-            <div className="row t"><span>Net Total</span><span>{inr(net)}</span></div>
-            <div className="row"><span>Packing Charges (3%)</span><span>{inr(pack)}</span></div>
-            <div className="row" style={{ color: "var(--ok)" }}><span>You Save</span><span>{inr(save)}</span></div>
-            <div className="row t"><span>Overall Amount</span><span>{inr(total)}</span></div>
+            <div className="row t"><span>{t("netRateLabel")}</span><span>{inr(net)}</span></div>
+            <div className="row"><span>{t("packingCharges")} (3%)</span><span>{inr(pack)}</span></div>
+            <div className="row" style={{ color: "var(--ok)" }}><span>{t("youSaved")}</span><span>{inr(save)}</span></div>
+            <div className="row t"><span>{t("overallAmount")}</span><span>{inr(total)}</span></div>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button className="btn alt" onClick={() => setStep("list")}>Back</button>
-            <button className="btn" onClick={submit} disabled={savingOrder}>{savingOrder ? "Saving…" : "Submit Enquiry"}</button>
+            <button className="btn alt" onClick={() => setStep("list")}>{t("back")}</button>
+            <button className="btn" onClick={submit} disabled={savingOrder}>{savingOrder ? t("saving") : t("submitEnquiry")}</button>
           </div>
           {submitError && <p className="err" role="alert" style={{ textAlign: "right" }}>{submitError}</p>}
         </>}
 
-        {step === "done" && <div className="panel ok"><h2>✅ Enquiry saved</h2><p>Your details are saved. Complete your order by sending the enquiry by email or WhatsApp, and keep this Order ID to look up its details.</p>
-          <p className="order-id">Order ID: <strong>{orderId}</strong></p>
+        {step === "done" && <div className="panel ok"><h2>{t("enquirySaved")}</h2><p>{t("enquirySavedDescription")}</p>
+          <p className="order-id">{t("orderIdLabel")}: <strong>{orderId}</strong></p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", margin: "14px 0" }}>
-            <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"mailto:" + SHOP_EMAIL + "?subject=" + encodeURIComponent("Enquiry - " + SHOP) + "&body=" + encodeURIComponent(sent)}>✉️ Send by Email</a>
-            <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"https://wa.me/91" + PHONES[0] + "?text=" + encodeURIComponent(sent)}>💬 Send on WhatsApp</a>
+            <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"mailto:" + SHOP_EMAIL + "?subject=" + encodeURIComponent("Enquiry - " + SHOP) + "&body=" + encodeURIComponent(sent)}>{t("sendEmail")}</a>
+            <a className="btn" style={{ textDecoration: "none" }} target="_blank" rel="noopener" href={"https://wa.me/91" + PHONES[0] + "?text=" + encodeURIComponent(sent)}>{t("sendWhatsapp")}</a>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
-            <button className="btn" type="button" onClick={() => scrollToOrderHistory(f.mobile || savedPhone)}>📜 View in Order History</button>
-            <button className="btn alt" type="button" onClick={openOrderLookup}>🔍 Find by 6-digit ID</button>
-            <button className="btn alt" type="button" onClick={() => { setStep("list"); setTouched(false); }}>Back to Pricelist</button>
+            <button className="btn" type="button" onClick={() => scrollToOrderHistory(f.mobile || savedPhone)}>{t("viewOrderHistory")}</button>
+            <button className="btn alt" type="button" onClick={openOrderLookup}>{t("findBySixDigit")}</button>
+            <button className="btn alt" type="button" onClick={() => { setStep("list"); setTouched(false); }}>{t("backToPricelist")}</button>
           </div></div>}
 
         {step === "admin" && (
@@ -1854,7 +1995,7 @@ export default function App() {
             {!adminLoading && filteredAdminOrders.length > 0 && (
               <div className="admin-orders-list">
                 {filteredAdminOrders.map(order => {
-                  const statusInfo = getStatusInfo(order.status);
+                  const statusInfo = getStatusInfo(order.status, language);
                   const isExpanded = adminExpandedIds.has(order.id);
                   const isDelivered = order.status === "delivered";
                   const isPaid = order.paid === true || order.paymentStatus === "paid";
@@ -2151,42 +2292,43 @@ export default function App() {
         )}
 
         <div className="panel tips" id="safety">
-          <h3 style={{ marginTop: 0 }}>🧯 Safety Tips</h3>
-          <ul><li>Use crackers outdoors in an open area, away from buildings and dry grass.</li><li>Keep a bucket of water or sand nearby. Light one at a time with a long incense stick.</li><li>Children must be supervised by an adult. Never relight a dud — douse it with water.</li><li>Wear cotton clothes and keep pets and elders at a safe distance.</li></ul>
+          <h3 style={{ marginTop: 0 }}>{t("safetyTitle")}</h3>
+          <ul><li>{t("safetyOne")}</li><li>{t("safetyTwo")}</li><li>{t("safetyThree")}</li><li>{t("safetyFour")}</li></ul>
         </div>
       </div>
 
       {step === "list" && <div className={"bar" + (chromeHidden ? " chrome-hidden" : "")}>
-        <div><span>Items</span><b>{count}</b></div>
-        <div><span>Net Total</span><b>{inr(net)}</b></div>
-        <div><span>You Save</span><b style={{ color: "var(--ok)" }}>{inr(save)}</b></div>
-        <div><span>Overall</span><b>{inr(actual ? total : 0)}</b></div>
-        <button className="btn" disabled={!count} onClick={() => { trackSiteEvent("start_order"); setStep("form"); window.scrollTo(0, 0); }}>Confirm Estimate →</button>
+        <div><span>{t("items")}</span><b>{count}</b></div>
+        <div><span>{t("netRateLabel")}</span><b>{inr(net)}</b></div>
+        <div><span>{t("youSaved")}</span><b style={{ color: "var(--ok)" }}>{inr(save)}</b></div>
+        <div><span>{t("overallAmount")}</span><b>{inr(actual ? total : 0)}</b></div>
+        <button className="btn whatsapp-cart-btn" disabled={!count} onClick={sendCartToWhatsApp}>{t("whatsappCart")}</button>
+        <button className="btn" disabled={!count} onClick={() => { trackSiteEvent("start_order"); setStep("form"); window.scrollTo(0, 0); }}>{t("confirmTitle")} →</button>
       </div>}
 
       <footer id="contact"><div className="wrap grid">
-        <div><img src={LOGO} alt="" style={{ height: 60, display: "block", marginBottom: 6 }} /><h4>About</h4><b>Hubballi Crackers · ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</b> — Wholesale &amp; Retail Fancy Fireworks. All kinds of crackers available. Genuine products, best quality, trusted dealer.</div>
-        <div><h4>Contact</h4>📍 Tadas Cross, Near Gayatri Matt, Ramankoppa/Tadas Cross 581116<br />📍 Stall No. 6, APMC Ground, Shiggaon<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
-        <div><h4>Notice</h4>Online sale of firecrackers is not permitted (Supreme Court, 2018). Add products to the cart and submit an enquiry; we confirm the order offline.</div>
+        <div><img src={LOGO} alt="" style={{ height: 60, display: "block", marginBottom: 6 }} /><h4>{t("about")}</h4><b>Hubballi Crackers · ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</b> — {t("storeDescription")}</div>
+        <div><h4>{t("contact")}</h4>📍 Tadas Cross, Near Gayatri Matt, Ramankoppa/Tadas Cross 581116<br />📍 Stall No. 6, APMC Ground, Shiggaon<br />{PHONES.map(p => <div key={p}>📞 <a style={{ color: "inherit" }} href={"tel:+91" + p}>{p}</a></div>)}</div>
+        <div><h4>{t("notice")}</h4>{t("noticeText")}</div>
       </div></footer>
 
       {selectedProduct && <div className="product-image-backdrop" onClick={() => setSelectedProduct(null)}>
         <section className="product-image-dialog" role="dialog" aria-modal="true" aria-labelledby="product-image-title" onClick={e => e.stopPropagation()}>
           <button className="product-image-close" type="button" aria-label="Close product image" onClick={() => setSelectedProduct(null)}>×</button>
           <div className="product-image-heading">
-            <span>{selectedProduct.emoji} Product photo</span>
+            <span>{selectedProduct.emoji} {t("productPhoto")}</span>
             <h2 id="product-image-title">{selectedProduct.name}</h2>
             <p>{selectedProduct.unit} · {inr(selectedProduct.price)}</p>
           </div>
           <div className="product-image-frame">
-            {productImage?.status === "loading" && <p>Loading photo and saving it to this browser…</p>}
+            {productImage?.status === "loading" && <p>{t("loadingPhoto")}</p>}
             {productImage?.status === "loaded" && <img src={productImage.src} alt={selectedProduct.name} />}
-            {productImage?.status === "missing" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>This product has no photo URL in the product catalog.</p></div>}
-            {productImage?.status === "error" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>The photo could not be loaded. Please try again while online.</p></div>}
+            {productImage?.status === "missing" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>{t("noPhoto")}</p></div>}
+            {productImage?.status === "error" && <div className="product-image-message"><span>{selectedProduct.emoji}</span><p>{t("photoError")}</p></div>}
           </div>
           <div className="product-image-footer">
-            <span>{productImage?.status === "loaded" ? "Loaded freshly from the product image server." : "Product images are fetched fresh when opened."}</span>
-            <span>Product image</span>
+            <span>{productImage?.status === "loaded" ? t("loadedFresh") : t("fetchedFresh")}</span>
+            <span>{t("productPhoto")}</span>
           </div>
         </section>
       </div>}
