@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+﻿import { useState, useMemo, useEffect, useRef } from "react";
 import {
   loadRates,
   saveOrder,
@@ -172,6 +172,7 @@ function printOrderReceipt(order) {
 function ContactPage({ onBack, t }) {
   const primaryPhone = PHONES[0];
   const mapSrc = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3851.045199754937!2d75.14232369999999!3d15.1558622!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bb92fc103f4da3f%3A0x5957e1b2ef60b253!2sHubballi%20Crackers!5e0!3m2!1sen!2sin!4v1793476154503!5m2!1sen!2sin";
+  const shiggaonMapSrc = "https://www.google.com/maps?q=APMC%20Ground%2C%20Shiggaon%2C%20Karnataka&output=embed";
 
   return (
     <section className="contact-page" id="contact-page" aria-labelledby="contact-page-title">
@@ -225,6 +226,7 @@ function ContactPage({ onBack, t }) {
               <span className="contact-card-label">{t("seasonalStall")}</span>
               <h3>Shiggaon</h3>
               <p>Stall No. 6, APMC Ground<br />Shiggaon, Karnataka</p>
+              <a className="contact-inline-link" href="https://maps.app.goo.gl/cFF9M1h38buuXfsT7" target="_blank" rel="noopener noreferrer">{t("findMap")} <span>↗</span></a>
               <span className="contact-card-note">{t("openFestive")}</span>
             </div>
           </div>
@@ -240,26 +242,51 @@ function ContactPage({ onBack, t }) {
           </div>
         </div>
 
-        <div className="contact-map-card">
-          <div className="contact-map-heading">
-            <div>
-              <span className="contact-kicker">{t("ourLocation")}</span>
-              <h2>{t("findMap")}</h2>
+        <div className="contact-map-stack">
+          <div className="contact-map-card">
+            <div className="contact-map-heading">
+              <div>
+                <span className="contact-kicker">{t("ourLocation")}</span>
+                <h2>{t("findMap")}</h2>
+              </div>
+              <span className="contact-map-pin">📌</span>
             </div>
-            <span className="contact-map-pin">📌</span>
+            <div className="contact-map-frame">
+              <iframe
+                src={mapSrc}
+                title={t("mapTitle")}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+            <div className="contact-map-footer">
+              <span>Hubballi Crackers · Tadas Cross</span>
+              <a href="https://www.google.com/maps/place/Hubballi+Crackers/@15.155924,75.141337,16z/data=!4m6!3m5!1s0x3bb92fc103f4da3f:0x5957e1b2ef60b253!8m2!3d15.1558622!4d75.1423237!16s%2Fg%2F11zymk0rsb?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MTAyOC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer">{t("openMaps")}</a>
+            </div>
           </div>
-          <div className="contact-map-frame">
-            <iframe
-              src={mapSrc}
-              title={t("mapTitle")}
-              loading="lazy"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
-          </div>
-          <div className="contact-map-footer">
-            <span>Hubballi Crackers · Tadas Cross</span>
-            <a href="https://www.google.com/maps/place/Hubballi+Crackers/@15.155924,75.141337,16z/data=!4m6!3m5!1s0x3bb92fc103f4da3f:0x5957e1b2ef60b253!8m2!3d15.1558622!4d75.1423237!16s%2Fg%2F11zymk0rsb?hl=en&amp;entry=ttu&amp;g_ep=EgoyMDI2MTAyOC4wIKXMDSoASAFQAw%3D%3D" target="_blank" rel="noopener noreferrer">{t("openMaps")}</a>
+
+          <div className="contact-map-card">
+            <div className="contact-map-heading">
+              <div>
+                <span className="contact-kicker">{t("ourLocation")}</span>
+                <h2>{t("findMap")}</h2>
+              </div>
+              <span className="contact-map-pin">📌</span>
+            </div>
+            <div className="contact-map-frame">
+              <iframe
+                src={shiggaonMapSrc}
+                title="APMC Ground, Shiggaon map location"
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
+            <div className="contact-map-footer">
+              <span>Hubballi Crackers · APMC Ground, Shiggaon</span>
+              <a href="https://maps.app.goo.gl/cFF9M1h38buuXfsT7" target="_blank" rel="noopener noreferrer">{t("openMaps")}</a>
+            </div>
           </div>
         </div>
       </div>
@@ -271,6 +298,51 @@ function ContactPage({ onBack, t }) {
       </div>
     </section>
   );
+}
+
+function BulkOrderPage({ t, saving, result, error, onSubmit, onBack }) {
+  const [form, setForm] = useState({ type: "wedding", eventDate: "", organization: "", name: "", mobile: "", email: "", city: "", shop: "Tadas Cross", fulfillment: "pickup", quantity: "", budget: "", address: "", requirements: "" });
+  const [validationError, setValidationError] = useState("");
+  const update = key => event => { setValidationError(""); setForm(current => ({ ...current, [key]: event.target.value })); };
+  const submit = event => {
+    event.preventDefault();
+    if (!form.eventDate || !form.name.trim() || !/^[6-9]\d{9}$/.test(form.mobile) || !form.city.trim() || !form.quantity.trim() || (form.fulfillment === "delivery" && !form.address.trim())) {
+      setValidationError(t("bulkRequired"));
+      return;
+    }
+    onSubmit(form);
+  };
+  const typeOptions = [["wedding", "bulkTypeWedding"], ["school", "bulkTypeSchool"], ["event", "bulkTypeEvent"], ["business", "bulkTypeBusiness"], ["community", "bulkTypeCommunity"], ["wholesale", "bulkTypeWholesale"]];
+  const message = result?.message || "";
+  return <section className="bulk-page" aria-labelledby="bulk-page-title">
+    {!result ? <>
+      <div className="bulk-hero">
+        <span className="contact-eyebrow">{t("bulkOrders")}</span>
+        <h1 id="bulk-page-title">{t("bulkTitle")}</h1>
+        <p>{t("bulkDescription")}</p>
+        <div className="bulk-trust">🎆 {t("bulkTrust")}</div>
+      </div>
+      <form className="panel bulk-form" onSubmit={submit}>
+        <div className="bulk-form-grid">
+          <div><label htmlFor="bulk-type">{t("bulkType")} *</label><select id="bulk-type" value={form.type} onChange={update("type")}>{typeOptions.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}</select></div>
+          <div><label htmlFor="bulk-event-date">{t("bulkEventDate")} *</label><input id="bulk-event-date" type="date" value={form.eventDate} onChange={update("eventDate")} required /></div>
+          <div><label htmlFor="bulk-organization">{t("bulkOrganization")}</label><input id="bulk-organization" value={form.organization} onChange={update("organization")} /></div>
+          <div><label htmlFor="bulk-name">{t("bulkName")} *</label><input id="bulk-name" value={form.name} onChange={update("name")} required /></div>
+          <div><label htmlFor="bulk-mobile">{t("bulkMobile")} *</label><input id="bulk-mobile" type="tel" inputMode="numeric" maxLength={10} value={form.mobile} onChange={event => setForm(current => ({ ...current, mobile: event.target.value.replace(/\D/g, "").slice(0, 10) }))} required /></div>
+          <div><label htmlFor="bulk-email">{t("bulkEmail")}</label><input id="bulk-email" type="email" value={form.email} onChange={update("email")} /></div>
+          <div><label htmlFor="bulk-city">{t("bulkCity")} *</label><input id="bulk-city" value={form.city} onChange={update("city")} required /></div>
+          <div><label htmlFor="bulk-shop">{t("bulkShop")}</label><select id="bulk-shop" value={form.shop} onChange={update("shop")}><option>Tadas Cross</option><option>Shiggaon</option></select></div>
+          <div><label htmlFor="bulk-fulfillment">{t("bulkFulfillment")}</label><select id="bulk-fulfillment" value={form.fulfillment} onChange={update("fulfillment")}><option value="pickup">{t("bulkPickup")}</option><option value="delivery">{t("bulkDelivery")}</option></select></div>
+          <div><label htmlFor="bulk-quantity">{t("bulkQuantity")} *</label><input id="bulk-quantity" placeholder="e.g. 100 boxes" value={form.quantity} onChange={update("quantity")} required /></div>
+          <div><label htmlFor="bulk-budget">{t("bulkBudget")}</label><input id="bulk-budget" inputMode="numeric" placeholder="e.g. ₹50,000" value={form.budget} onChange={update("budget")} /></div>
+          <div className="bulk-form-wide"><label htmlFor="bulk-address">{t("bulkAddress")}{form.fulfillment === "delivery" ? " *" : ""}</label><textarea id="bulk-address" rows={2} value={form.address} onChange={update("address")} required={form.fulfillment === "delivery"} /></div>
+          <div className="bulk-form-wide"><label htmlFor="bulk-requirements">{t("bulkRequirements")}</label><textarea id="bulk-requirements" rows={4} value={form.requirements} onChange={update("requirements")} /></div>
+        </div>
+        {(validationError || error) && <p className="err" role="alert">{validationError || error}</p>}
+        <div className="bulk-actions"><button className="btn alt" type="button" onClick={onBack}>{t("bulkBack")}</button><button className="btn" type="submit" disabled={saving}>{saving ? t("bulkSaving") : t("bulkSubmit")}</button></div>
+      </form>
+    </> : <div className="panel bulk-success"><h1>{t("bulkSuccess")}</h1><p>{t("bulkSuccessDescription")}</p><p className="order-id">{t("bulkId")}: <strong>{result.id}</strong></p><div className="bulk-actions"><a className="btn whatsapp-cart-btn" href={`https://wa.me/91${PHONES[0]}?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer">{t("bulkWhatsApp")}</a><a className="btn" href={`mailto:${SHOP_EMAIL}?subject=${encodeURIComponent("Bulk enquiry - " + SHOP)}&body=${encodeURIComponent(message)}`}>{t("bulkEmailAction")}</a><button className="btn alt" type="button" onClick={onBack}>{t("bulkBack")}</button></div></div>}
+  </section>;
 }
 
 function HeroCarousel() {
@@ -426,6 +498,27 @@ export default function App() {
   const [cat, setCat] = useState("all");
   const [q, setQ] = useState("");
   const [step, setStep] = useState("list");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("bulk") === "1") {
+      setStep("bulk");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkError, setBulkError] = useState("");
+  const [bulkResult, setBulkResult] = useState(null);
+  useEffect(() => {
+    const pageKey = step === "contact" ? "Contact" : step === "bulk" ? "Bulk" : step === "lookup" ? "Lookup" : ["form", "done"].includes(step) ? "Estimate" : "Home";
+    const title = t(`seo${pageKey}Title`);
+    const description = t(`seo${pageKey}Description`);
+    document.title = title;
+    const descriptionMeta = document.querySelector('meta[name="description"]');
+    if (descriptionMeta) descriptionMeta.setAttribute("content", description);
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute("content", title);
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription) ogDescription.setAttribute("content", description);
+  }, [language, step]);
   const [f, setF] = useState({ state: "", city: "", name: "", mobile: "", email: "", address: "", shop: "Tadas Cross" });
   const [touched, setTouched] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -701,6 +794,7 @@ export default function App() {
     const confirmedOrders = adminOrders.filter(o => o.status === "confirmed").length;
     const dispatchedOrders = adminOrders.filter(o => o.status === "dispatched").length;
     const deliveredOrders = adminOrders.filter(o => o.status === "delivered").length;
+    const bulkOrders = adminOrders.filter(o => o.orderType === "bulk").length;
     const todayKey = new Date().toDateString();
     const todayOrders = adminOrders.filter(o => {
       const d = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt);
@@ -719,6 +813,7 @@ export default function App() {
       confirmedOrders,
       dispatchedOrders,
       deliveredOrders,
+      bulkOrders,
       todayOrders: todayOrders.length,
       todayRevenue: todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0),
       topProducts,
@@ -942,6 +1037,8 @@ export default function App() {
       result = result.filter(o => o.paid === true || o.paymentStatus === "paid");
     } else if (adminFilter === "unpaid") {
       result = result.filter(o => !o.paid && o.paymentStatus !== "paid");
+    } else if (adminFilter === "bulk") {
+      result = result.filter(o => o.orderType === "bulk");
     } else if (adminFilter !== "all") {
       result = result.filter(o => o.status === adminFilter);
     }
@@ -1067,6 +1164,51 @@ export default function App() {
       setSavingOrder(false);
     }
   };
+  const submitBulkOrder = async bulkForm => {
+    setBulkSaving(true);
+    setBulkError("");
+    try {
+      const typeKey = `bulkType${bulkForm.type.charAt(0).toUpperCase()}${bulkForm.type.slice(1)}`;
+      const typeLabel = t(typeKey);
+      const fulfillmentLabel = bulkForm.fulfillment === "delivery" ? t("bulkDelivery") : t("bulkPickup");
+      const details = [
+        `${t("bulkOrders")}: ${SHOP}`,
+        `${t("bulkType")}: ${typeLabel}`,
+        `${t("bulkEventDate")}: ${bulkForm.eventDate}`,
+        bulkForm.organization ? `${t("bulkOrganization")}: ${bulkForm.organization}` : "",
+        `${t("bulkName")}: ${bulkForm.name}`,
+        `${t("bulkMobile")}: ${bulkForm.mobile}`,
+        bulkForm.email ? `${t("bulkEmail")}: ${bulkForm.email}` : "",
+        `${t("bulkCity")}: ${bulkForm.city}`,
+        `${t("bulkShop")}: ${bulkForm.shop}`,
+        `${t("bulkFulfillment")}: ${fulfillmentLabel}`,
+        `${t("bulkQuantity")}: ${bulkForm.quantity}`,
+        bulkForm.budget ? `${t("bulkBudget")}: ${bulkForm.budget}` : "",
+        bulkForm.address ? `${t("bulkAddress")}: ${bulkForm.address}` : "",
+        bulkForm.requirements ? `${t("bulkRequirements")}: ${bulkForm.requirements}` : ""
+      ].filter(Boolean).join("\n");
+      const id = await saveOrder({
+        orderType: "bulk",
+        shop: bulkForm.shop,
+        customer: { name: bulkForm.name.trim(), mobile: bulkForm.mobile, email: bulkForm.email.trim(), city: bulkForm.city.trim(), state: "Karnataka", address: bulkForm.address.trim() || "To be confirmed" },
+        items: [{ name: `${typeLabel} - ${bulkForm.quantity}`, displayName: `${typeLabel} - ${bulkForm.quantity}`, unit: "Bulk enquiry", quantity: 1, unitPrice: 0, total: 0 }],
+        net: 0,
+        packing: 0,
+        savings: 0,
+        total: 0,
+        bulkDetails: { ...bulkForm, typeLabel, fulfillmentLabel }
+      });
+      const message = `${details}\n\n${t("bulkId")}: ${id}`;
+      trackSiteEvent("submit_order");
+      setBulkResult({ id, message });
+      setStep("bulk");
+    } catch (error) {
+      console.error("Unable to save bulk enquiry:", error);
+      setBulkError(t("bulkError"));
+    } finally {
+      setBulkSaving(false);
+    }
+  };
   const lookupOrder = async event => {
     event.preventDefault();
     setLookupState({ status: "loading" });
@@ -1190,10 +1332,10 @@ export default function App() {
       <header className={chromeHidden ? "chrome-hidden" : ""}>
         <img src={LOGO} alt="Hubballi Crackers" style={{ height: 52 }} />
         <div className="brand-wordmark"><span>Hubballi Crackers</span><span lang="kn">ಹುಬ್ಬಳ್ಳಿ ಕ್ರ್ಯಾಕರ್ಸ್</span></div>
-        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>{t("priceList")}</a><button className="nav-action" type="button" onClick={openOrderLookup}>{t("findById")}</button><a href="#safety">{t("safetyTips")}</a><a href="#contact-page" onClick={e => { e.preventDefault(); setStep("contact"); window.scrollTo(0, 0); }}>{t("contact")}</a><button type="button" className="language-toggle" onClick={toggleLanguage} aria-label={language === "en" ? t("switchToKannada") : t("switchToEnglish")}><span>{language === "en" ? "EN" : t("contactLanguage")}</span><span>↔</span><span>{language === "en" ? t("contactLanguage") : "EN"}</span></button><a href="#admin" className="admin-nav-link" onClick={e => { e.preventDefault(); setStep("admin"); window.scrollTo(0, 0); }} aria-label={t("admin")}>🔐 {t("admin")}</a></nav>
+        <nav><a href={"tel:+91" + PHONES[0]}>📞 {PHONES[0]}</a><a href="#top" onClick={() => { setStep("list"); window.scrollTo(0, 0); }}>{t("priceList")}</a><button className="nav-action" type="button" onClick={openOrderLookup}>{t("findById")}</button><a href="#safety">{t("safetyTips")}</a><button className="nav-action" type="button" onClick={() => { setBulkError(""); setBulkResult(null); setStep("bulk"); window.scrollTo(0, 0); }}>{t("bulkOrders")}</button><a href="#contact-page" onClick={e => { e.preventDefault(); setStep("contact"); window.scrollTo(0, 0); }}>{t("contact")}</a><button type="button" className="language-toggle" onClick={toggleLanguage} aria-label={language === "en" ? t("switchToKannada") : t("switchToEnglish")}><span>{language === "en" ? "EN" : t("contactLanguage")}</span><span>↔</span><span>{language === "en" ? t("contactLanguage") : "EN"}</span></button><a href="#admin" className="admin-nav-link" onClick={e => { e.preventDefault(); setStep("admin"); window.scrollTo(0, 0); }} aria-label={t("admin")}>🔐 {t("admin")}</a></nav>
       </header>
 
-      <div className="wrap" id="top">
+      <main className="wrap" id="top">
         {step === "list" && <>
           <div className="hero">
             <div className="mini-badge">{t("collection")}</div>
@@ -1519,6 +1661,8 @@ export default function App() {
 
         {step === "contact" && <ContactPage t={t} onBack={() => { setStep("list"); window.scrollTo(0, 0); }} />}
 
+        {step === "bulk" && <BulkOrderPage t={t} saving={bulkSaving} result={bulkResult} error={bulkError} onSubmit={submitBulkOrder} onBack={() => { setBulkResult(null); setBulkError(""); setStep("list"); window.scrollTo(0, 0); }} />}
+
         {step === "form" && <>
           <div className="hero"><h1>{t("confirmTitle")}</h1></div>
           <div className="panel">
@@ -1745,6 +1889,11 @@ export default function App() {
                 <div className="admin-stat-sub">Unpaid: <b>{inr(adminStats.unpaidRevenue)}</b></div>
               </div>
               <div className="admin-stat-card">
+                <div className="admin-stat-label">Bulk Orders</div>
+                <div className="admin-stat-val" style={{ color: "var(--deep)" }}>{adminStats.bulkOrders}</div>
+                <div className="admin-stat-sub">Bulk enquiries received</div>
+              </div>
+              <div className="admin-stat-card">
                 <div className="admin-stat-label">Delivery Pipeline</div>
                 <div className="admin-stat-val" style={{ fontSize: "15px", marginTop: "4px" }}>
                   <span>⏳ {adminStats.pendingOrders}</span> · <span>✅ {adminStats.confirmedOrders}</span> · <span>🚚 {adminStats.dispatchedOrders}</span> · <span>🎉 {adminStats.deliveredOrders}</span>
@@ -1943,8 +2092,8 @@ export default function App() {
               />
               <select value={adminFilter} onChange={e => setAdminFilter(e.target.value)}>
                 <option value="all">All Orders ({adminOrders.length})</option>
+<option value="bulk">📦 Bulk Orders ({adminStats.bulkOrders})</option>
                 <option value="pending_confirmation">⏳ Pending Confirmation ({adminStats.pendingOrders})</option>
-                <option value="confirmed">✅ Confirmed ({adminStats.confirmedOrders})</option>
                 <option value="dispatched">🚚 Dispatched ({adminStats.dispatchedOrders})</option>
                 <option value="delivered">🎉 Delivered / Successful ({adminStats.deliveredOrders})</option>
                 <option value="paid">💳 Paid ({adminStats.paidOrders})</option>
@@ -2115,6 +2264,27 @@ export default function App() {
                           <div><b>Discount Saved:</b> <span style={{ color: "var(--ok)", fontWeight: "700" }}>{inr(order.savings || 0)}</span></div>
                           <div style={{ fontSize: "15px", marginTop: "4px" }}><b>Overall Total:</b> <span style={{ color: "var(--brand)", fontWeight: "900" }}>{inr(order.total || 0)}</span></div>
                         </div>
+
+                        {order.orderType === "bulk" && (
+                          <div className="admin-shipping-box">
+                            <div className="admin-box-title">📦 Bulk Enquiry Details</div>
+                            <div><b>Enquiry Type:</b> {order.bulkDetails?.typeLabel}</div>
+                            <div><b>Event Date:</b> {order.bulkDetails?.eventDate}</div>
+                            {order.bulkDetails?.organization && <div><b>Organization:</b> {order.bulkDetails.organization}</div>}
+                            <div><b>Customer:</b> {order.customer?.name} · +91 {order.customer?.mobile}</div>
+                            <div><b>City:</b> {order.customer?.city}</div>
+                            <div><b>Preferred Shop:</b> {order.bulkDetails?.shop}</div>
+                            <div><b>Fulfillment:</b> {order.bulkDetails?.fulfillmentLabel}</div>
+                            <div><b>Quantity:</b> {order.bulkDetails?.quantity}</div>
+                            {order.bulkDetails?.budget && <div><b>Budget:</b> {order.bulkDetails.budget}</div>}
+                            {order.bulkDetails?.address && <div><b>Address:</b> {order.bulkDetails.address}</div>}
+                            {order.bulkDetails?.requirements && (
+                              <div style={{ marginTop: "6px", background: "rgba(23, 96, 71, 0.08)", padding: "4px 8px", borderRadius: "6px" }}>
+                                📝 <b>Requirements:</b> {order.bulkDetails.requirements}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="admin-note-box">
@@ -2291,11 +2461,26 @@ export default function App() {
           </section>
         )}
 
+        <section className="panel seo-service-area" aria-labelledby="service-area-title">
+          <h2 id="service-area-title">{t("serviceAreaTitle")}</h2>
+          <p>{t("serviceAreaText")}</p>
+          <p className="seo-location-list"><strong>Tadas Cross:</strong> Near Gayatri Matt, Ramankoppa / Tadas Cross 581116 · <strong>Shiggaon:</strong> Stall No. 6, APMC Ground</p>
+          <div className="seo-location-links"><a href="/hubballi-crackers">Hubballi crackers</a><a href="/tadas-cross-crackers">Tadas Cross crackers</a><a href="/shiggaon-crackers">Shiggaon crackers</a><a href="/wholesale-fireworks-karnataka">Wholesale fireworks Karnataka</a></div>
+        </section>
+
+        <section className="panel seo-faq" id="faq" aria-labelledby="faq-title">
+          <h2 id="faq-title">{t("faqTitle")}</h2>
+          <details><summary>{t("faqOneQ")}</summary><p>{t("faqOneA")}</p></details>
+          <details><summary>{t("faqTwoQ")}</summary><p>{t("faqTwoA")}</p></details>
+          <details><summary>{t("faqThreeQ")}</summary><p>{t("faqThreeA")}</p></details>
+          <details><summary>{t("faqFourQ")}</summary><p>{t("faqFourA")}</p></details>
+        </section>
+
         <div className="panel tips" id="safety">
           <h3 style={{ marginTop: 0 }}>{t("safetyTitle")}</h3>
           <ul><li>{t("safetyOne")}</li><li>{t("safetyTwo")}</li><li>{t("safetyThree")}</li><li>{t("safetyFour")}</li></ul>
         </div>
-      </div>
+      </main>
 
       {step === "list" && <div className={"bar" + (chromeHidden ? " chrome-hidden" : "")}>
         <div><span>{t("items")}</span><b>{count}</b></div>
