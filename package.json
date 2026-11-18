@@ -16,14 +16,21 @@
   "type": "module",
   "dependencies": {
     "@google-cloud/firestore": "^9.1.0",
-    "firebase": "^13.0.0",
+    "firebase": "^13.2.0",
     "firebase-admin": "^14.5.0",
+    "playwright": "^1.64.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.4",
-    "firebase-tools": "^15.34.1",
+    "firebase-tools": "^15.34.2",
     "vite": "^7.1.12"
+  },
+  "allowScripts": {
+    "@firebase/util": true,
+    "esbuild@0.28.2": true,
+    "protobufjs": true,
+    "re2@1.27.0": true
   }
 }

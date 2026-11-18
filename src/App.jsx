@@ -164,8 +164,24 @@ function Qty({ v, set }) {
 function printOrderReceipt(order) {
   const popup = window.open("", "_blank", "width=800,height=900");
   if (!popup) return;
-  const items = (order.items || []).map(item => `<tr><td>${item.name} (${item.unit || ""})</td><td>${item.quantity || 0}</td><td>${inr(item.total || 0)}</td></tr>`).join("");
-  popup.document.write(`<!doctype html><html><head><title>Order ${order.id} Receipt</title><style>body{font:14px Arial;padding:28px;color:#251b12}h1{color:#176047}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}td:nth-child(2),td:nth-child(3){text-align:right}.total{font-size:18px;font-weight:bold;margin-top:20px;text-align:right}</style></head><body><h1>Hubballi Crackers</h1><p>Order #${order.id}<br>${formatOrderDate(order.createdAt)}</p><p><b>${order.customer?.name || ""}</b><br>+91 ${order.customer?.mobile || ""}<br>${order.customer?.address || ""}, ${order.customer?.city || ""}, ${order.customer?.state || ""}</p><table><thead><tr><th>Product</th><th>Qty</th><th>Total</th></tr></thead><tbody>${items}</tbody></table><p class="total">Overall Total: ${inr(order.total || 0)}</p><script>window.onload=()=>window.print()</script></body></html>`);
+  
+  // Sanitize all user inputs to prevent XSS
+  const sanitize = (str) => {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;")
+      .replace(/\//g, "&#x2F;");
+  };
+  
+  const items = (order.items || []).map(item => 
+    `<tr><td>${sanitize(item.name)} (${sanitize(item.unit || "")})</td><td>${item.quantity || 0}</td><td>${inr(item.total || 0)}</td></tr>`
+  ).join("");
+  
+  popup.document.write(`<!doctype html><html><head><title>Order ${sanitize(order.id)} Receipt</title><style>body{font:14px Arial;padding:28px;color:#251b12}h1{color:#176047}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}td:nth-child(2),td:nth-child(3){text-align:right}.total{font-size:18px;font-weight:bold;margin-top:20px;text-align:right}</style></head><body><h1>Hubballi Crackers</h1><p>Order #${sanitize(order.id)}<br>${formatOrderDate(order.createdAt)}</p><p><b>${sanitize(order.customer?.name || "")}</b><br>+91 ${sanitize(order.customer?.mobile || "")}<br>${sanitize(order.customer?.address || "")}, ${sanitize(order.customer?.city || "")}, ${sanitize(order.customer?.state || "")}</p><table><thead><tr><th>Product</th><th>Qty</th><th>Total</th></tr></thead><tbody>${items}</tbody></table><p class="total">Overall Total: ${inr(order.total || 0)}</p><script>window.onload=()=>window.print()</script></body></html>`);
   popup.document.close();
 }
 
